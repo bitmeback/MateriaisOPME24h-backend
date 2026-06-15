@@ -1,0 +1,28 @@
+<?php
+declare(strict_types=1);
+
+return [
+    ['GET', '/', 'LandingController@index', false],
+    ['GET', '/login', 'AuthController@showLogin', false],
+    ['POST', '/login', 'AuthController@login', false],
+    ['GET', '/logout', 'AuthController@logout', true],
+    ['GET', '/dashboard', 'DashboardController@index', true],
+    ['GET', '/perfil', 'ProfileController@index', true],
+    ['POST', '/perfil', 'ProfileController@updatePassword', true],
+    ['GET', '/usuarios', 'UsersController@index', true],
+    ['POST', '/usuarios', 'UsersController@store', true],
+    ['POST', '/usuarios/excluir/{id}', 'UsersController@delete', true],
+    ['GET', '/fornecedores', 'VendorController@index', true],
+    ['GET', '/fornecedores/novo', 'VendorController@create', true],
+    ['POST', '/fornecedores/novo', 'VendorController@store', true],
+    ['GET', '/fornecedores/editar/{id}', 'VendorController@edit', true],
+    ['POST', '/fornecedores/editar/{id}', 'VendorController@update', true],
+    ['POST', '/fornecedores/enviar-pendentes/{id}', 'VendorController@sendPending', true],
+    ['POST', '/fornecedores/reprocessar-pendentes', 'VendorController@reprocessPending', true],
+    ['POST', '/fornecedores/excluir/{id}', 'VendorController@delete', true],
+    ['GET', '/configuracoes/sistema', 'ConfigController@system', true],
+    ['POST', '/configuracoes/sistema', 'ConfigController@saveSystem', true],
+    ['GET', '/configuracoes/credenciais', 'ConfigController@credentials', true],
+    ['POST', '/configuracoes/credenciais', 'ConfigController@saveCredentials', true],
+    ['GET', '/enviados', 'EnviosController@index', true],
+];
