@@ -33,10 +33,17 @@ final class VendorService
         $params = [];
 
         if ($query !== '') {
-            $where[] = '(name LIKE :q OR cnpj LIKE :qc OR cnpj_formatted LIKE :qf)';
+            $normalized = Cnpj::normalize($query);
+            $where[] = '(name LIKE :q OR cnpj_formatted LIKE :qf OR contacts LIKE :q2 OR status LIKE :q3 OR notes LIKE :q4)';
             $params[':q']  = '%' . $query . '%';
-            $params[':qc'] = '%' . Cnpj::normalize($query) . '%';
             $params[':qf'] = '%' . $query . '%';
+            $params[':q2'] = '%' . $query . '%';
+            $params[':q3'] = '%' . $query . '%';
+            $params[':q4'] = '%' . $query . '%';
+            if ($normalized !== '') {
+                $where[] = 'cnpj LIKE :qc';
+                $params[':qc'] = '%' . $normalized . '%';
+            }
         }
 
         if ($status !== '' && strcasecmp($status, 'all') !== 0) {
