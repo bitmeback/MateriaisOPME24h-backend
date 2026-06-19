@@ -198,7 +198,7 @@ final class ReportsController
         } catch (\Throwable $e) {
             $_SESSION['flash_error'] = 'Erro ao atualizar: ' . $e->getMessage();
             header("Location: /reports/editar/{$id}");
-            exit);
+            exit;
         }
     }
 }
