@@ -12,7 +12,18 @@ final class ReportRecipientsRepository
 
     public function __construct()
     {
-        $this->pdo = Database::pdo();
+        $db = \MateriaisOpme\App\Support\Config::get('db');
+        $dsn = sprintf(
+            'mysql:host=%s;port=%d;dbname=materiais_opme_reports;charset=%s',
+            $db['host'] ?? '127.0.0.1',
+            $db['port'] ?? 3306,
+            $db['charset'] ?? 'utf8mb4'
+        );
+        $this->pdo = new PDO($dsn, $db['user'] ?? 'materiais_opme_user', $db['pass'] ?? '', [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
     }
 
     public function all(): array
