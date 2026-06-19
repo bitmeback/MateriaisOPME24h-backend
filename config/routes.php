@@ -25,4 +25,7 @@ return [
     ['GET', '/configuracoes/credenciais', 'ConfigController@credentials', true],
     ['POST', '/configuracoes/credenciais', 'ConfigController@saveCredentials', true],
     ['GET', '/enviados', 'EnviosController@index', true],
+    ['GET', '/reports', 'ReportsController@index', true],
+    ['POST', '/reports', 'ReportsController@store', true],
+    ['POST', '/reports/excluir/{id}', 'ReportsController@delete', true],
 ];
