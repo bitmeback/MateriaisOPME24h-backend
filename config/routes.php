@@ -27,5 +27,7 @@ return [
     ['GET', '/enviados', 'EnviosController@index', true],
     ['GET', '/reports', 'ReportsController@index', true],
     ['POST', '/reports', 'ReportsController@store', true],
+    ['GET', '/reports/editar/{id}', 'ReportsController@edit', true],
+    ['POST', '/reports/editar/{id}', 'ReportsController@update', true],
     ['POST', '/reports/excluir/{id}', 'ReportsController@delete', true],
 ];
