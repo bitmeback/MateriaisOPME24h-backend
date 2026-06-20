@@ -7,6 +7,9 @@ ob_start();
   <a class="btn" href="/fornecedores">Fornecedores</a>
   <a class="btn" href="/enviados">Enviados</a>
   <?php if (in_array(($role ?? 'guest'), ['admin', 'desenv'], true)): ?>
+    <a class="btn" href="/reports">Relatórios</a>
+  <?php endif; ?>
+  <?php if (in_array(($role ?? 'guest'), ['admin', 'desenv'], true)): ?>
     <a class="btn" href="/usuarios">Usuários</a>
   <?php endif; ?>
   <?php if (in_array(($role ?? 'guest'), ['admin', 'desenv'], true)): ?>
