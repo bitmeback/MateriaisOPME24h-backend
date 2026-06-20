@@ -39,7 +39,7 @@ final class ConfigController
             return;
         }
 
-        $path = '/root/.materiais_opme_hml_backend.conf';
+        $path = '/root/.materiais_opme_backend.conf';
         $current = FileConfig::parse($path);
         $updated = $this->mergeSystemConfig($current, $_POST);
 
@@ -99,7 +99,7 @@ final class ConfigController
 
     private function systemValues(): array
     {
-        $config = FileConfig::parse('/root/.materiais_opme_hml_backend.conf');
+        $config = FileConfig::parse('/root/.materiais_opme_backend.conf');
 
         return [
             'app_name' => $config['app_name'] ?? 'Materiais Opme Backend',
@@ -109,7 +109,7 @@ final class ConfigController
             'session_secret' => '',
             'csrf_secret' => '',
             'compras_credentials_file' => $config['compras_credentials_file'] ?? '/root/.credentials_compras4.conf',
-            'log_dir' => $config['log_dir'] ?? '/var/log/materiais_opme_hml_backend',
+            'log_dir' => $config['log_dir'] ?? '/var/log/materiais_opme_backend',
         ];
     }
 
@@ -142,7 +142,7 @@ final class ConfigController
         }
 
         $updated['compras_credentials_file'] = trim((string)($post['compras_credentials_file'] ?? $updated['compras_credentials_file'] ?? '/root/.credentials_compras4.conf'));
-        $updated['log_dir'] = trim((string)($post['log_dir'] ?? $updated['log_dir'] ?? '/var/log/materiais_opme_hml_backend'));
+        $updated['log_dir'] = trim((string)($post['log_dir'] ?? $updated['log_dir'] ?? '/var/log/materiais_opme_backend'));
 
         return $updated;
     }

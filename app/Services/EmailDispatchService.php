@@ -20,10 +20,10 @@ final class EmailDispatchService
 
     public function __construct()
     {
-        $this->scriptPath = '/root/materiais-opme-24h_hml-git/scripts';
+        $this->scriptPath = '/root/materiais-opme-24h-git/scripts';
         $this->logDir = '/var/log';
-        $this->isTest = true;
-        $this->dbName = 'materiais_opme_hml';
+        $this->isTest = (getenv('OPME_ENV') === 'homologacao');
+        $this->dbName = $this->isTest ? 'materiais_opme_teste' : 'materiais_opme';
     }
 
     /**

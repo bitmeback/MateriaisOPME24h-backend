@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 use MateriaisOpme\App\Support\FileConfig;
 
-$backendFile = '/root/.materiais_opme_hml_backend.conf';
+$backendFile = '/root/.materiais_opme_backend.conf';
 $flat = FileConfig::parse($backendFile);
 
 return [

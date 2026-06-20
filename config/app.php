@@ -11,13 +11,13 @@ return [
     'session_cookie_httponly' => true,
     'session_cookie_samesite' => 'Strict',
     'files' => [
-        'fornecedores' => '/root/.materiais_opme_hml_fornecedores.conf',
+        'fornecedores' => '/root/.materiais_opme_fornecedores.conf',
         'compras_credentials' => '/root/.credentials_compras4.conf',
         'webmail_url' => '/root/.materiais_opme.conf',
-        'backend' => '/root/.materiais_opme_hml_backend.conf',
+        'backend' => '/root/.materiais_opme_backend.conf',
     ],
     'paths' => [
-        'log_dir' => '/var/log/materiais_opme_hml_backend',
+        'log_dir' => '/var/log/materiais_opme_backend',
         'storage_dir' => __DIR__ . '/../storage',
     ],
 ];

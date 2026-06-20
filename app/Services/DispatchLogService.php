@@ -8,7 +8,7 @@ use RuntimeException;
 
 final class DispatchLogService
 {
-    private const LOG_PATH = '/var/log/materiais_opme_hml_envios.log';
+    private const LOG_PATH = '/var/log/materiais_opme_envios.log';
 
     private ?EnviosRelatoriosRepository $repository = null;
 
