@@ -18,14 +18,14 @@ ob_start();
 <h1>Histórico e Relatórios de Consumo OPME</h1>
 <p class="muted">Acompanhe as mudanças de status dos materiais registradas pelo robô de ingestão. Exporte para CSV compatível com Microsoft Excel.</p>
 
-<div class="nav nav-top" style="margin-bottom:20px;">
+<div class="nav nav-top">
   <a class="btn" href="/especialidades">Especialidades</a>
   <a class="btn" href="/consumo" style="background:#3b82f6; color:#fff;">Monitoramento</a>
   <a class="btn btn-secondary" href="/dashboard">Voltar ao painel</a>
 </div>
 
 <!-- Cards de estatísticas resumidas -->
-<div style="display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+<div class="grid" style="margin-bottom:24px;">
   <div class="dashboard-card" style="flex:1; min-width:180px; border-left: 4px solid #3b82f6; padding: 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px;">
     <span style="font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase;">Total Transições</span>
     <h2 style="margin:8px 0 0; font-size:28px; color:#3b82f6;"><?= $total_transicoes ?></h2>

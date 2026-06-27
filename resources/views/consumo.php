@@ -16,14 +16,14 @@ ob_start();
 <h1>Monitor de Estoque de Consumo OPME</h1>
 <p class="muted">Acompanhe o saldo físico do hospital monitorado em tempo real com regras de threshold baseadas no histórico analítico (excluindo Ortopedia).</p>
 
-<div class="nav nav-top" style="margin-bottom:20px;">
+<div class="nav nav-top">
   <a class="btn" href="/especialidades">Especialidades</a>
   <a class="btn" href="/consumo/relatorios">Relatórios</a>
-  <a class="btn btn-secondary" href="/dashboard">Voltar</a>
+  <a class="btn btn-secondary" href="/dashboard">Voltar ao painel</a>
 </div>
 
 <!-- Cards descritivos de status -->
-<div style="display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+<div class="grid" style="margin-bottom:24px;">
   <div class="dashboard-card" style="flex:1; min-width:200px; border-left: 4px solid #10b981; padding: 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px;">
     <span style="font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase;">Saudáveis</span>
     <h2 style="margin:8px 0 0; font-size:28px; color:#10b981;"><?= $saudavel_count ?></h2>
