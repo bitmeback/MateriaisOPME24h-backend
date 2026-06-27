@@ -39,7 +39,7 @@ final class ConfigController
             return;
         }
 
-        $path = '/root/.materiais_opme_backend.conf';
+        $path = dirname(__DIR__, 2) . '/config/generated/production.backend.conf';
         $current = FileConfig::parse($path);
         $updated = $this->mergeSystemConfig($current, $_POST);
 
@@ -71,7 +71,7 @@ final class ConfigController
             return;
         }
 
-        $path = '/root/.credentials_compras4.conf';
+        $path = dirname(__DIR__, 2) . '/config/generated/production.credentials.conf';
         $current = FileConfig::parse($path);
         $user = trim((string)($_POST['user'] ?? ''));
         $pass = (string)($_POST['pass'] ?? '');
@@ -99,7 +99,7 @@ final class ConfigController
 
     private function systemValues(): array
     {
-        $config = FileConfig::parse('/root/.materiais_opme_backend.conf');
+        $config = FileConfig::parse(dirname(__DIR__, 2) . '/config/generated/production.backend.conf');
 
         return [
             'app_name' => $config['app_name'] ?? 'Materiais Opme Backend',
@@ -115,7 +115,7 @@ final class ConfigController
 
     private function credentialsValues(): array
     {
-        $config = FileConfig::parse('/root/.credentials_compras4.conf');
+        $config = FileConfig::parse(dirname(__DIR__, 2) . '/config/generated/production.credentials.conf');
         return [
             'user' => $config['user'] ?? '',
             'pass' => '',

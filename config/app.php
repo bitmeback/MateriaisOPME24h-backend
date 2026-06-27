@@ -12,9 +12,9 @@ return [
     'session_cookie_samesite' => 'Strict',
     'files' => [
         'fornecedores' => '/root/.materiais_opme_fornecedores.conf',
-        'compras_credentials' => '/root/.credentials_compras4.conf',
-        'webmail_url' => '/root/.materiais_opme.conf',
-        'backend' => '/root/.materiais_opme_backend.conf',
+        'compras_credentials' => __DIR__ . '/generated/production.credentials.conf',
+        'webmail_url' => __DIR__ . '/generated/production.webmail.conf',
+        'backend' => __DIR__ . '/generated/production.backend.conf',
     ],
     'paths' => [
         'log_dir' => '/var/log/materiais_opme_backend',

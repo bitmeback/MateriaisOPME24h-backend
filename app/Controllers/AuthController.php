@@ -37,8 +37,18 @@ final class AuthController
             return;
         }
 
-        $auth = new \MateriaisOpme\App\Services\AuthService();
-        if (!$auth->login($username, $password)) {
+        try {
+            $auth = new \MateriaisOpme\App\Services\AuthService();
+            $result = $auth->login($username, $password);
+        } catch (\Throwable $e) {
+            error_log('[LOGIN_ERROR] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            View::render('login', [
+                'csrf_token' => Csrf::token(),
+                'error' => 'Erro interno: ' . $e->getMessage(),
+            ]);
+            return;
+        }
+        if (!$result) {
             View::render('login', [
                 'csrf_token' => Csrf::token(),
                 'error' => 'Credenciais inválidas.',

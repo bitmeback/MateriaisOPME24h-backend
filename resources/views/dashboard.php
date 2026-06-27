@@ -6,6 +6,11 @@ ob_start();
 <div class="nav nav-top">
   <a class="btn" href="/fornecedores">Fornecedores</a>
   <a class="btn" href="/enviados">Enviados</a>
+  <?php if (in_array(($role ?? 'guest'), ['admin', 'desenv', 'user'], true)): ?>
+    <a class="btn" href="/reports">Relatórios</a>
+    <a class="btn" href="/especialidades">Especialidades</a>
+    <a class="btn" href="/consumo" style="background: #3b82f6; color:#fff;">Consumo</a>
+  <?php endif; ?>
   <?php if (in_array(($role ?? 'guest'), ['admin', 'desenv'], true)): ?>
     <a class="btn" href="/usuarios">Usuários</a>
   <?php endif; ?>

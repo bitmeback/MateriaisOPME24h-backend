@@ -1,0 +1,257 @@
+<?php
+declare(strict_types=1);
+
+namespace MateriaisOpme\App\Controllers;
+
+use MateriaisOpme\App\Middleware\AuthMiddleware;
+use MateriaisOpme\App\Support\Database;
+use MateriaisOpme\App\Support\View;
+use MateriaisOpme\App\Support\Csrf;
+
+final class ConsumoController
+{
+    private AuthMiddleware $auth;
+
+    public function __construct()
+    {
+        $this->auth = new AuthMiddleware();
+    }
+
+    public function index(): void
+    {
+        $this->auth->requireLogin();
+
+        $q = trim((string)($_GET['q'] ?? ''));
+        $status_filtro = trim((string)($_GET['status'] ?? ''));
+        $sort = trim((string)($_GET['sort'] ?? 'status_ratio'));
+        $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos')); // padrão: apenas ativos
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = max(1, min(100, (int)($_GET['per_page'] ?? 20)));
+
+        $pdo = Database::pdo();
+
+        // 1. Obter a lista de relações desativadas (blacklist) na memória para cruzamento veloz
+        $stmtInativas = $pdo->query('SELECT cd_material, cnpj_fornecedor FROM consumo_relacoes_inativas');
+        $blacklist = [];
+        while ($row = $stmtInativas->fetch()) {
+            $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+            $blacklist[$key] = true;
+        }
+
+        // 2. Query principal do fluxo analítico
+        $sql = "
+            SELECT 
+                s.cd_material,
+                s.cd_fornec_consignado AS cnpj_fornecedor,
+                COALESCE(f.name, 'Não identificado') AS ds_fornecedor,
+                s.saldo,
+                COALESCE(c.descricao, 'Material Desconhecido') AS descricao,
+                CEIL(SUM(c.consumo) / 3) AS media_trimestre
+            FROM saldo_estoque_atual s
+            LEFT JOIN consumo_materiais c ON s.cd_material = c.codigo
+            LEFT JOIN consumo_fornecedores f ON f.cnpj = s.cd_fornec_consignado
+            LEFT JOIN consumo_fornecedor_especialidade cfe ON cfe.cnpj_fornecedor = s.cd_fornec_consignado AND cfe.id_especialidade = 1
+            WHERE c.ano = 2025 
+              AND c.mes >= 3
+              AND cfe.id_especialidade IS NULL
+            GROUP BY s.cd_material, s.cd_fornec_consignado, c.descricao, f.name, s.saldo
+            HAVING media_trimestre > 1
+        ";
+
+        $stmt = $pdo->query($sql);
+        $rawItems = $stmt->fetchAll();
+
+        $processedItems = [];
+
+        foreach ($rawItems as $row) {
+            $codigo = (int)$row['cd_material'];
+            $cnpj = (string)$row['cnpj_fornecedor'];
+            $key = $codigo . '_' . $cnpj;
+
+            // Verificar se o vínculo está ativo ou inativo
+            $vinculo_ativo = !isset($blacklist[$key]);
+
+            // Aplicar o filtro de vínculo do select superior
+            if ($filtro_vinculo === 'ativos' && !$vinculo_ativo) {
+                continue; // oculta inativos
+            }
+            if ($filtro_vinculo === 'inativos' && $vinculo_ativo) {
+                continue; // oculta ativos
+            }
+
+            $saldo = (float)$row['saldo'];
+            $media = (float)$row['media_trimestre'];
+            $desc = (string)$row['descricao'];
+            $forn = (string)$row['ds_fornecedor'];
+
+            $threshold_critico = (float)ceil($media * 0.95);
+            $threshold_warning = (float)ceil($media * 1.05);
+
+            $status = 'normal';
+            $status_desc = 'Saudável';
+
+            if ($saldo <= $threshold_critico) {
+                $status = 'critico';
+                $status_desc = 'Crítico';
+            } elseif ($saldo <= $threshold_warning) {
+                $status = 'alerta';
+                $status_desc = 'Alerta';
+            }
+
+            // Ratio de criticidade para ordenação (menor ratio = mais crítico)
+            $ratio = $media > 0 ? ($saldo / $media) : 999.0;
+
+            $processedItems[] = [
+                'codigo' => $codigo,
+                'descricao' => $desc,
+                'cnpj_fornecedor' => $cnpj,
+                'fornecedor' => $forn,
+                'saldo' => $saldo,
+                'media' => $media,
+                'threshold_critico' => $threshold_critico,
+                'threshold_warning' => $threshold_warning,
+                'status' => $status,
+                'status_desc' => $status_desc,
+                'ratio' => $ratio,
+                'vinculo_ativo' => $vinculo_ativo
+            ];
+        }
+
+        // Aplicação de filtros textuais
+        if ($q !== '') {
+            $processedItems = array_filter($processedItems, function ($item) use ($q) {
+                return (stripos((string)$item['codigo'], $q) !== false) || 
+                       (stripos($item['descricao'], $q) !== false) ||
+                       (stripos($item['fornecedor'], $q) !== false);
+            });
+        }
+
+        // Filtro de status de estoque
+        if ($status_filtro !== '') {
+            $processedItems = array_filter($processedItems, function ($item) use ($status_filtro) {
+                return $item['status'] === $status_filtro;
+            });
+        }
+
+        // Ordenação
+        usort($processedItems, function ($a, $b) use ($sort) {
+            if ($sort === 'status_ratio') {
+                $statusWeights = ['critico' => 1, 'alerta' => 2, 'normal' => 3];
+                $wa = $statusWeights[$a['status']] ?? 3;
+                $wb = $statusWeights[$b['status']] ?? 3;
+                if ($wa !== $wb) {
+                    return $wa <=> $wb;
+                }
+                return $a['ratio'] <=> $b['ratio'];
+            } elseif ($sort === 'nome_asc') {
+                return strcasecmp($a['descricao'], $b['descricao']);
+            } elseif ($sort === 'nome_desc') {
+                return strcasecmp($b['descricao'], $a['descricao']);
+            } elseif ($sort === 'codigo_asc') {
+                return $a['codigo'] <=> $b['codigo'];
+            } elseif ($sort === 'codigo_desc') {
+                return $b['codigo'] <=> $a['codigo'];
+            } elseif ($sort === 'saldo_asc') {
+                return $a['saldo'] <=> $b['saldo'];
+            } elseif ($sort === 'saldo_desc') {
+                return $b['saldo'] <=> $a['saldo'];
+            } elseif ($sort === 'media_desc') {
+                return $b['media'] <=> $a['media'];
+            }
+            return 0;
+        });
+
+        // Contagens correspondentes aos cards superiores baseados na lista atual sob visibilidade
+        $totalItemsCount = count($processedItems);
+        $criticosCount = count(array_filter($processedItems, fn($i) => $i['status'] === 'critico'));
+        $alertasCount = count(array_filter($processedItems, fn($i) => $i['status'] === 'alerta'));
+        $saudavelCount = count(array_filter($processedItems, fn($i) => $i['status'] === 'normal'));
+
+        // Paginação
+        $total = count($processedItems);
+        $totalPages = max(1, (int)ceil($total / $perPage));
+        $page = min($page, $totalPages);
+        $offset = ($page - 1) * $perPage;
+        $itemsPaginados = array_slice($processedItems, $offset, $perPage);
+
+        $pagination = [
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'total_pages' => $totalPages,
+        ];
+
+        View::render('consumo', [
+            'items' => $itemsPaginados,
+            'busca' => $q,
+            'filtro_status' => $status_filtro,
+            'filtro_vinculo' => $filtro_vinculo,
+            'sort' => $sort,
+            'pagination' => $pagination,
+            'total_count' => $totalItemsCount,
+            'critico_count' => $criticosCount,
+            'alerta_count' => $alertasCount,
+            'saudavel_count' => $saudavelCount,
+            'csrf_token' => Csrf::token()
+        ]);
+    }
+
+    /**
+     * Endpoint silencioso AJAX que recebe o toggle de ligar/desligar vínculos
+     * do estoque de consumo.
+     */
+    public function toggleVinculo(): void
+    {
+        $this->auth->requireLogin();
+
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'error' => 'Método não permitido']);
+            exit;
+        }
+
+        // Validação CSRF silencioso via cabeçalhos HTTP customizados do Javascript
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
+        if (!Csrf::validate($token)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Token CSRF inválido ou expirado']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+
+        $cd_material = (int)($input['cd_material'] ?? 0);
+        $cnpj_fornecedor = preg_replace('/[^0-9]/', '', (string)($input['cnpj_fornecedor'] ?? ''));
+        $ativo = filter_var($input['ativo'] ?? true, FILTER_VALIDATE_BOOL);
+
+        if ($cd_material <= 0 || strlen($cnpj_fornecedor) !== 14) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Dados de material ou fornecedor inválidos']);
+            exit;
+        }
+
+        $pdo = Database::pdo();
+
+        try {
+            if ($ativo) {
+                // Se está ativo no painel, ele deve ser REMOVIDO da blacklist de inativos
+                $stmt = $pdo->prepare('DELETE FROM consumo_relacoes_inativas WHERE cd_material = ? AND cnpj_fornecedor = ?');
+                $stmt->execute([$cd_material, $cnpj_fornecedor]);
+                $action = 'reativado';
+            } else {
+                // Se foi inativado no painel, deve ser INSERIDO na blacklist
+                $stmt = $pdo->prepare('INSERT IGNORE INTO consumo_relacoes_inativas (cd_material, cnpj_fornecedor) VALUES (?, ?)');
+                $stmt->execute([$cd_material, $cnpj_fornecedor]);
+                $action = 'desativado';
+            }
+
+            echo json_encode(['success' => true, 'action' => $action]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Erro interno na transação de dados: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+}

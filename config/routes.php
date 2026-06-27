@@ -30,4 +30,13 @@ return [
     ['GET', '/reports/editar/{id}', 'ReportsController@edit', true],
     ['POST', '/reports/editar/{id}', 'ReportsController@update', true],
     ['POST', '/reports/excluir/{id}', 'ReportsController@delete', true],
+    ['GET', '/especialidades', 'EspecialidadesController@index', true],
+    ['POST', '/especialidades/novo', 'EspecialidadesController@store', true],
+    ['POST', '/especialidades/editar', 'EspecialidadesController@update', true],
+    ['POST', '/especialidades/excluir', 'EspecialidadesController@delete', true],
+    ['POST', '/especialidades/salvar-fornecedor', 'EspecialidadesController@syncFornecedor', true],
+    ['GET', '/api/fornecedor-especialidades', 'EspecialidadesController@getFornecedorEspecialidades', true],
+    ['GET', '/api/especialidade-fornecedores', 'EspecialidadesController@getEspecialidadeFornecedores', true],
+    ['GET', '/consumo', 'ConsumoController@index', true],
+    ['POST', '/consumo/toggle', 'ConsumoController@toggleVinculo', true],
 ];

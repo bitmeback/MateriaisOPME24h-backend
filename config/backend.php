@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 use MateriaisOpme\App\Support\FileConfig;
 
-$backendFile = '/root/.materiais_opme_backend.conf';
+$backendFile = __DIR__ . '/generated/production.backend.conf';
 $flat = FileConfig::parse($backendFile);
 
 return [
@@ -28,7 +28,7 @@ return [
     'files' => [
         'fornecedores' => $flat['fornecedores_file'] ?? '/root/.materiais_opme_fornecedores.conf',
         'compras_credentials' => $flat['compras_credentials_file'] ?? '/root/.credentials_compras4.conf',
-        'webmail_url' => $flat['webmail_url_file'] ?? '/root/.materiais_opme.conf',
+        'webmail_url' => $flat['webmail_url_file'] ?? __DIR__ . '/generated/production.webmail.conf',
         'backend' => $backendFile,
     ],
     'paths' => [
