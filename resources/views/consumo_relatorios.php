@@ -48,53 +48,50 @@ ob_start();
   </div>
 </div>
 
-<!-- Filtros e Tabela Agrupados -->
+<!-- Filtros -->
 <section class="panel list-panel">
   <div class="panel-head">
     <div>
       <h2>Histórico de Transições em Massa</h2>
       <p class="muted">Listagem das últimas mudanças de status detectadas (Ruptura, Prevenção e Estabilidade).</p>
     </div>
+    <div>
+      <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>">
+        📥 Exportar CSV (Excel BR)
+      </a>
+    </div>
   </div>
 
-  <!-- Barra de Busca/Filtros em linha transparente -->
-  <form method="get" action="/consumo/relatorios" class="search-bar" style="margin-bottom:16px;">
-    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; width:100%;">
-      <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>" title="Data Início" style="max-width: 140px;">
-      <span class="muted">até</span>
-      <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>" title="Data Fim" style="max-width: 140px;">
-      
-      <select name="status" style="min-width:180px;">
-        <option value="">Todos os status</option>
-        <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico (Ruptura)</option>
-        <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>🟠 Alerta (Prevenção)</option>
-        <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>🟢 Saudável</option>
-      </select>
+  <form method="get" action="/consumo/relatorios" class="search-bar">
+    <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>" title="Data Início" style="max-width: 140px;">
+    <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>" title="Data Fim" style="max-width: 140px;">
+    
+    <select name="status">
+      <option value="">Todos os status</option>
+      <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico (Ruptura)</option>
+      <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>🟠 Alerta (Prevenção)</option>
+      <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>🟢 Saudável</option>
+    </select>
 
-      <select name="id_especialidade" style="min-width:200px;">
-        <option value="0">Todas Especialidades</option>
-        <?php foreach ($especialidades as $esp): ?>
-          <option value="<?= $esp['id'] ?>" <?= $id_especialidade === (int)$esp['id'] ? 'selected' : '' ?>><?= htmlspecialchars($esp['nome'], ENT_QUOTES, 'UTF-8') ?></option>
-        <?php endforeach; ?>
-      </select>
+    <select name="id_especialidade">
+      <option value="0">Todas Especialidades</option>
+      <?php foreach ($especialidades as $esp): ?>
+        <option value="<?= $esp['id'] ?>" <?= $id_especialidade === (int)$esp['id'] ? 'selected' : '' ?>><?= htmlspecialchars($esp['nome'], ENT_QUOTES, 'UTF-8') ?></option>
+      <?php endforeach; ?>
+    </select>
 
-      <select name="id_fornecedor" style="flex:1; min-width:250px;">
-        <option value="0">Todos Fornecedores</option>
-        <?php foreach ($fornecedores as $forn): ?>
-          <option value="<?= $forn['id'] ?>" <?= $id_fornecedor === (int)$forn['id'] ? 'selected' : '' ?>><?= htmlspecialchars($forn['name'], ENT_QUOTES, 'UTF-8') ?></option>
-        <?php endforeach; ?>
-      </select>
+    <select name="id_fornecedor">
+      <option value="0">Todos Fornecedores</option>
+      <?php foreach ($fornecedores as $forn): ?>
+        <option value="<?= $forn['id'] ?>" <?= $id_fornecedor === (int)$forn['id'] ? 'selected' : '' ?>><?= htmlspecialchars($forn['name'], ENT_QUOTES, 'UTF-8') ?></option>
+      <?php endforeach; ?>
+    </select>
 
-      <button type="submit" class="btn">Filtrar</button>
-      
-      <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>" style="margin-left:auto;">
-        📥 Exportar CSV
-      </a>
-      
-      <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $id_especialidade !== 0 || $id_fornecedor !== 0): ?>
-        <a class="btn btn-secondary" href="/consumo/relatorios">Limpar</a>
-      <?php endif; ?>
-    </div>
+    <button type="submit" class="btn">Filtrar</button>
+    
+    <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $id_especialidade !== 0 || $id_fornecedor !== 0): ?>
+      <a class="btn btn-secondary" href="/consumo/relatorios">Limpar</a>
+    <?php endif; ?>
   </form>
 
   <?php if (empty($historico)): ?>
