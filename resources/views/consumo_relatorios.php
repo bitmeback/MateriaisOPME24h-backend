@@ -21,7 +21,7 @@ ob_start();
 <div class="nav nav-top" style="margin-bottom:20px;">
   <a class="btn" href="/especialidades">Especialidades</a>
   <a class="btn" href="/consumo" style="background:#3b82f6; color:#fff;">Monitoramento</a>
-  <a class="btn btn-secondary" href="/dashboard">Voltar</a>
+  <a class="btn btn-secondary" href="/dashboard">Voltar ao painel</a>
 </div>
 
 <!-- Cards de estatísticas resumidas -->
@@ -63,13 +63,13 @@ ob_start();
   </div>
 
   <form method="get" action="/consumo/relatorios" class="search-bar">
-    <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>" title="Data Início" style="max-width: 140px;">
-    <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>" title="Data Fim" style="max-width: 140px;">
+    <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>" title="Data Início">
+    <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>" title="Data Fim">
     
     <select name="status">
       <option value="">Todos os status</option>
-      <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico (Ruptura)</option>
-      <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>🟠 Alerta (Prevenção)</option>
+      <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico</option>
+      <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>🟠 Alerta</option>
       <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>🟢 Saudável</option>
     </select>
 
