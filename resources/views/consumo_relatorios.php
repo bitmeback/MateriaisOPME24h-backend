@@ -15,8 +15,8 @@ ob_start();
 /** @var array $fornecedores */
 /** @var string $csrf_token */
 ?>
-<h1>Relatórios de Transições de Status - Consumo OPME</h1>
-<p class="muted">Histórico de mudanças de status dos materiais com base no robô de ingestão diário. Exporte para CSV e abra no Microsoft Excel.</p>
+<h1>Relatórios de Transições de Status</h1>
+<p class="muted">Histórico de mudanças de status dos materiais com base no robô de ingestão diário. Filtre e exporte para CSV compatível com Microsoft Excel.</p>
 
 <div class="nav nav-top" style="margin-bottom:20px;">
   <a class="btn" href="/consumo">Voltar para Monitoramento</a>
@@ -48,19 +48,25 @@ ob_start();
 </div>
 
 <!-- Filtros -->
-<div class="card" style="margin-bottom:20px;">
+<section class="panel" style="margin-bottom:20px;">
+  <div class="panel-head">
+    <div>
+      <h2>Filtros de Pesquisa</h2>
+      <p class="muted">Refine o histórico por período, status, especialidade ou fornecedor.</p>
+    </div>
+  </div>
   <form method="get" action="/consumo/relatorios">
-    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-      <div style="flex:1; min-width:160px;">
-        <label style="font-size:12px; font-weight:700; color:#374151;">Data Início</label>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; align-items:end;">
+      <div>
+        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Data Início</label>
         <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>">
       </div>
-      <div style="flex:1; min-width:160px;">
-        <label style="font-size:12px; font-weight:700; color:#374151;">Data Fim</label>
+      <div>
+        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Data Fim</label>
         <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>">
       </div>
-      <div style="flex:1; min-width:160px;">
-        <label style="font-size:12px; font-weight:700; color:#374151;">Status</label>
+      <div>
+        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Status</label>
         <select name="status">
           <option value="">Todos</option>
           <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>Crítico</option>
@@ -68,8 +74,8 @@ ob_start();
           <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>Normal</option>
         </select>
       </div>
-      <div style="flex:1; min-width:160px;">
-        <label style="font-size:12px; font-weight:700; color:#374151;">Especialidade</label>
+      <div>
+        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Especialidade</label>
         <select name="id_especialidade">
           <option value="0">Todas</option>
           <?php foreach ($especialidades as $esp): ?>
@@ -77,8 +83,8 @@ ob_start();
           <?php endforeach; ?>
         </select>
       </div>
-      <div style="flex:1; min-width:160px;">
-        <label style="font-size:12px; font-weight:700; color:#374151;">Fornecedor</label>
+      <div>
+        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Fornecedor</label>
         <select name="id_fornecedor">
           <option value="0">Todos</option>
           <?php foreach ($fornecedores as $forn): ?>
@@ -87,73 +93,94 @@ ob_start();
         </select>
       </div>
       <div>
-        <button type="submit" class="btn" style="margin-bottom:12px;">Filtrar</button>
+        <button type="submit" class="btn">Filtrar</button>
+        <a class="btn btn-secondary" href="/consumo/relatorios">Limpar</a>
       </div>
     </div>
   </form>
-</div>
+</section>
 
 <!-- Botão de Exportar CSV -->
 <div style="margin-bottom:16px;">
-  <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>" id="btn-export-csv">
+  <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>">
     📥 Exportar CSV (Excel BR)
   </a>
+  <span class="muted" style="margin-left:12px; font-size:12px;">Delimitador ponto e vírgula (;) · BOM UTF-8</span>
 </div>
 
 <!-- Tabela de histórico -->
-<div class="card">
-  <h2 style="margin-top:0;">Histórico de Transições de Status</h2>
+<section class="panel list-panel">
+  <div class="panel-head">
+    <div>
+      <h2>Histórico de Transições de Status</h2>
+      <p class="muted"><?= $total_transicoes ?> registro(s) encontrado(s).</p>
+    </div>
+  </div>
+
   <?php if (empty($historico)): ?>
     <p class="muted" style="padding: 24px 0; text-align: center;">Nenhuma transição de status registrada para os filtros aplicados.</p>
   <?php else: ?>
-    <div class="table-wrap">
-      <table class="list-table">
-        <thead>
-          <tr>
-            <th style="text-align:center;">Código</th>
-            <th>Material</th>
-            <th>Fornecedor</th>
-            <th style="text-align:center;">Status Anterior</th>
-            <th style="text-align:center;">Status Novo</th>
-            <th style="text-align:center;">Saldo</th>
-            <th style="text-align:center;">Média</th>
-            <th style="text-align:center;">Data</th>
+  <div class="table-wrap">
+    <table class="list-table">
+      <colgroup>
+        <col style="width: 8%;">
+        <col style="width: 30%;">
+        <col style="width: 18%;">
+        <col style="width: 10%;">
+        <col style="width: 10%;">
+        <col style="width: 8%;">
+        <col style="width: 8%;">
+        <col style="width: 8%;">
+      </colgroup>
+      <thead>
+        <tr>
+          <th style="text-align:center;">Código</th>
+          <th>Material</th>
+          <th>Fornecedor</th>
+          <th style="text-align:center;">Status Anterior</th>
+          <th style="text-align:center;">Status Novo</th>
+          <th style="text-align:center;">Saldo</th>
+          <th style="text-align:center;">Média</th>
+          <th style="text-align:center;">Data</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($historico as $row): ?>
+          <tr class="row-hover">
+            <td style="text-align:center;"><strong><?= htmlspecialchars($row['cd_material']) ?></strong></td>
+            <td><?= htmlspecialchars($row['descricao']) ?></td>
+            <td>
+              <div style="font-weight:500; font-size:13px; color:#374151;"><?= htmlspecialchars($row['fornecedor']) ?></div>
+              <div class="muted" style="font-size:11px;">CNPJ: <?= \MateriaisOpme\App\Support\Cnpj::format($row['cnpj_fornecedor']) ?></div>
+            </td>
+            <td style="text-align:center;">
+              <?php if ($row['status_anterior'] === 'critico'): ?>
+                <span class="status-tag" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🔴 CRÍTICO</span>
+              <?php elseif ($row['status_anterior'] === 'alerta'): ?>
+                <span class="status-tag" style="background:#fef3c7;color:#f59e0b;border:1px solid #fcd34d;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟠 ALERTA</span>
+              <?php else: ?>
+                <span class="status-tag" style="background:#ecfdf5;color:#10b981;border:1px solid #a7f3d0;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟢 NORMAL</span>
+              <?php endif; ?>
+            </td>
+            <td style="text-align:center;">
+              <?php if ($row['status_novo'] === 'critico'): ?>
+                <span class="status-tag" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🔴 CRÍTICO</span>
+              <?php elseif ($row['status_novo'] === 'alerta'): ?>
+                <span class="status-tag" style="background:#fef3c7;color:#f59e0b;border:1px solid #fcd34d;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟠 ALERTA</span>
+              <?php else: ?>
+                <span class="status-tag" style="background:#ecfdf5;color:#10b981;border:1px solid #a7f3d0;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟢 NORMAL</span>
+              <?php endif; ?>
+            </td>
+            <td style="text-align:center;font-weight:700;"><?= number_format((int)$row['saldo_momento'], 0, ',', '.') ?></td>
+            <td style="text-align:center;"><?= number_format((int)$row['media_momento'], 0, ',', '.') ?></td>
+            <td style="text-align:center;white-space:nowrap;"><?= htmlspecialchars($row['data_formatada']) ?></td>
           </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($historico as $row): ?>
-            <tr class="row-hover">
-              <td style="text-align:center;"><strong><?= htmlspecialchars($row['cd_material']) ?></strong></td>
-              <td><?= htmlspecialchars($row['descricao']) ?></td>
-              <td><?= htmlspecialchars($row['fornecedor']) ?><br><span class="muted" style="font-size:11px;">CNPJ: <?= \MateriaisOpme\App\Support\Cnpj::format($row['cnpj_fornecedor']) ?></span></td>
-              <td style="text-align:center;">
-                <?php if ($row['status_anterior'] === 'critico'): ?>
-                  <span class="status-tag" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🔴 CRÍTICO</span>
-                <?php elseif ($row['status_anterior'] === 'alerta'): ?>
-                  <span class="status-tag" style="background:#fef3c7;color:#f59e0b;border:1px solid #fcd34d;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟠 ALERTA</span>
-                <?php else: ?>
-                  <span class="status-tag" style="background:#ecfdf5;color:#10b981;border:1px solid #a7f3d0;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟢 NORMAL</span>
-                <?php endif; ?>
-              </td>
-              <td style="text-align:center;">
-                <?php if ($row['status_novo'] === 'critico'): ?>
-                  <span class="status-tag" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🔴 CRÍTICO</span>
-                <?php elseif ($row['status_novo'] === 'alerta'): ?>
-                  <span class="status-tag" style="background:#fef3c7;color:#f59e0b;border:1px solid #fcd34d;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟠 ALERTA</span>
-                <?php else: ?>
-                  <span class="status-tag" style="background:#ecfdf5;color:#10b981;border:1px solid #a7f3d0;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟢 NORMAL</span>
-                <?php endif; ?>
-              </td>
-              <td style="text-align:center;font-weight:700;"><?= number_format((int)$row['saldo_momento'], 0, ',', '.') ?></td>
-              <td style="text-align:center;"><?= number_format((int)$row['media_momento'], 0, ',', '.') ?></td>
-              <td style="text-align:center;white-space:nowrap;"><?= htmlspecialchars($row['data_formatada']) ?></td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
   <?php endif; ?>
-</div>
+</section>
 
 <?php
 $content = ob_get_clean();
