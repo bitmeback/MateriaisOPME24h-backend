@@ -240,7 +240,7 @@ ob_start();
 
 /* Modal styling */
 .modal-overlay {
-  display: flex !important;
+  display: none;
 }
 
 /* Linha do tempo vertical (Timeline) */
