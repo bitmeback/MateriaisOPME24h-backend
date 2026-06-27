@@ -15,12 +15,13 @@ ob_start();
 /** @var array $fornecedores */
 /** @var string $csrf_token */
 ?>
-<h1>Relatórios de Transições de Status</h1>
-<p class="muted">Histórico de mudanças de status dos materiais com base no robô de ingestão diário. Filtre e exporte para CSV compatível com Microsoft Excel.</p>
+<h1>Histórico e Relatórios de Consumo OPME</h1>
+<p class="muted">Acompanhe as mudanças de status dos materiais registradas pelo robô de ingestão. Exporte para CSV compatível com Microsoft Excel.</p>
 
 <div class="nav nav-top" style="margin-bottom:20px;">
-  <a class="btn" href="/consumo">Voltar para Monitoramento</a>
-  <a class="btn btn-secondary" href="/dashboard">Dashboard</a>
+  <a class="btn" href="/especialidades">Especialidades</a>
+  <a class="btn" href="/consumo" style="background:#3b82f6; color:#fff;">Monitoramento</a>
+  <a class="btn btn-secondary" href="/dashboard">Voltar</a>
 </div>
 
 <!-- Cards de estatísticas resumidas -->
@@ -47,75 +48,54 @@ ob_start();
   </div>
 </div>
 
-<!-- Filtros -->
-<section class="panel" style="margin-bottom:20px;">
-  <div class="panel-head">
-    <div>
-      <h2>Filtros de Pesquisa</h2>
-      <p class="muted">Refine o histórico por período, status, especialidade ou fornecedor.</p>
-    </div>
-  </div>
-  <form method="get" action="/consumo/relatorios">
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; align-items:end;">
-      <div>
-        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Data Início</label>
-        <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>">
-      </div>
-      <div>
-        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Data Fim</label>
-        <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>">
-      </div>
-      <div>
-        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Status</label>
-        <select name="status">
-          <option value="">Todos</option>
-          <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>Crítico</option>
-          <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>Alerta</option>
-          <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>Normal</option>
-        </select>
-      </div>
-      <div>
-        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Especialidade</label>
-        <select name="id_especialidade">
-          <option value="0">Todas</option>
-          <?php foreach ($especialidades as $esp): ?>
-            <option value="<?= $esp['id'] ?>" <?= $id_especialidade === (int)$esp['id'] ? 'selected' : '' ?>><?= htmlspecialchars($esp['nome'], ENT_QUOTES, 'UTF-8') ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div>
-        <label style="display:block; font-size:12px; font-weight:700; color:#374151; margin:0 0 4px;">Fornecedor</label>
-        <select name="id_fornecedor">
-          <option value="0">Todos</option>
-          <?php foreach ($fornecedores as $forn): ?>
-            <option value="<?= $forn['id'] ?>" <?= $id_fornecedor === (int)$forn['id'] ? 'selected' : '' ?>><?= htmlspecialchars($forn['name'], ENT_QUOTES, 'UTF-8') ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div>
-        <button type="submit" class="btn">Filtrar</button>
-        <a class="btn btn-secondary" href="/consumo/relatorios">Limpar</a>
-      </div>
-    </div>
-  </form>
-</section>
-
-<!-- Botão de Exportar CSV -->
-<div style="margin-bottom:16px;">
-  <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>">
-    📥 Exportar CSV (Excel BR)
-  </a>
-  <span class="muted" style="margin-left:12px; font-size:12px;">Delimitador ponto e vírgula (;) · BOM UTF-8</span>
-</div>
-
-<!-- Tabela de histórico -->
+<!-- Filtros e Tabela Agrupados -->
 <section class="panel list-panel">
   <div class="panel-head">
     <div>
-      <h2>Histórico de Transições de Status</h2>
-      <p class="muted"><?= $total_transicoes ?> registro(s) encontrado(s).</p>
+      <h2>Histórico de Transições em Massa</h2>
+      <p class="muted">Listagem das últimas mudanças de status detectadas (Ruptura, Prevenção e Estabilidade).</p>
     </div>
   </div>
+
+  <!-- Barra de Busca/Filtros em linha transparente -->
+  <form method="get" action="/consumo/relatorios" class="search-bar" style="margin-bottom:16px;">
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; width:100%;">
+      <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>" title="Data Início" style="max-width: 140px;">
+      <span class="muted">até</span>
+      <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>" title="Data Fim" style="max-width: 140px;">
+      
+      <select name="status" style="min-width:180px;">
+        <option value="">Todos os status</option>
+        <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico (Ruptura)</option>
+        <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>🟠 Alerta (Prevenção)</option>
+        <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>🟢 Saudável</option>
+      </select>
+
+      <select name="id_especialidade" style="min-width:200px;">
+        <option value="0">Todas Especialidades</option>
+        <?php foreach ($especialidades as $esp): ?>
+          <option value="<?= $esp['id'] ?>" <?= $id_especialidade === (int)$esp['id'] ? 'selected' : '' ?>><?= htmlspecialchars($esp['nome'], ENT_QUOTES, 'UTF-8') ?></option>
+        <?php endforeach; ?>
+      </select>
+
+      <select name="id_fornecedor" style="flex:1; min-width:250px;">
+        <option value="0">Todos Fornecedores</option>
+        <?php foreach ($fornecedores as $forn): ?>
+          <option value="<?= $forn['id'] ?>" <?= $id_fornecedor === (int)$forn['id'] ? 'selected' : '' ?>><?= htmlspecialchars($forn['name'], ENT_QUOTES, 'UTF-8') ?></option>
+        <?php endforeach; ?>
+      </select>
+
+      <button type="submit" class="btn">Filtrar</button>
+      
+      <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>" style="margin-left:auto;">
+        📥 Exportar CSV
+      </a>
+      
+      <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $id_especialidade !== 0 || $id_fornecedor !== 0): ?>
+        <a class="btn btn-secondary" href="/consumo/relatorios">Limpar</a>
+      <?php endif; ?>
+    </div>
+  </form>
 
   <?php if (empty($historico)): ?>
     <p class="muted" style="padding: 24px 0; text-align: center;">Nenhuma transição de status registrada para os filtros aplicados.</p>
@@ -123,14 +103,14 @@ ob_start();
   <div class="table-wrap">
     <table class="list-table">
       <colgroup>
-        <col style="width: 8%;">
-        <col style="width: 30%;">
-        <col style="width: 18%;">
+        <col style="width: 5%;">
+        <col style="width: 35%;">
+        <col style="width: 15%;">
         <col style="width: 10%;">
         <col style="width: 10%;">
         <col style="width: 8%;">
         <col style="width: 8%;">
-        <col style="width: 8%;">
+        <col style="width: 9%;">
       </colgroup>
       <thead>
         <tr>
