@@ -256,6 +256,209 @@ final class ConsumoController
     }
 
     /**
+     * Página de Relatórios de Consumo com filtros e exportação CSV.
+     */
+    public function relatorios(): void
+    {
+        $this->auth->requireLogin();
+
+        $data_inicio = trim((string)($_GET['data_inicio'] ?? ''));
+        $data_fim = trim((string)($_GET['data_fim'] ?? ''));
+        $status_filtro = trim((string)($_GET['status'] ?? ''));
+        $id_especialidade = (int)($_GET['id_especialidade'] ?? 0);
+        $id_fornecedor = (int)($_GET['id_fornecedor'] ?? 0);
+
+        $pdo = Database::pdo();
+
+        // 1. Blacklist de relações inativas
+        $stmtInativas = $pdo->query('SELECT cd_material, cnpj_fornecedor FROM consumo_relacoes_inativas');
+        $blacklist = [];
+        while ($row = $stmtInativas->fetch()) {
+            $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+            $blacklist[$key] = true;
+        }
+
+        // 2. Query base para histórico de status transacional
+        $sql = "
+            SELECT 
+                h.cd_material,
+                h.cnpj_fornecedor,
+                COALESCE(c.descricao, 'Material Desconhecido') AS descricao,
+                COALESCE(f.name, 'Não identificado') AS fornecedor,
+                h.status_anterior,
+                h.status_novo,
+                h.saldo_momento,
+                h.media_momento,
+                DATE_FORMAT(h.data_transicao, '%d/%m/%Y %H:%i') AS data_formatada,
+                h.data_transicao
+            FROM consumo_status_historico h
+            LEFT JOIN consumo_materiais c ON h.cd_material = c.codigo
+            LEFT JOIN consumo_fornecedores f ON f.cnpj = h.cnpj_fornecedor
+            LEFT JOIN consumo_fornecedor_especialidade cfe ON cfe.cnpj_fornecedor = h.cnpj_fornecedor AND cfe.id_especialidade = 1
+            WHERE 1=1
+        ";
+        $params = [];
+
+        if ($data_inicio !== '') {
+            $sql .= " AND h.data_transicao >= ?";
+            $params[] = date('Y-m-d 00:00:00', strtotime($data_inicio));
+        }
+        if ($data_fim !== '') {
+            $sql .= " AND h.data_transicao <= ?";
+            $params[] = date('Y-m-d 23:59:59', strtotime($data_fim));
+        }
+        if ($status_filtro !== '') {
+            $sql .= " AND h.status_novo = ?";
+            $params[] = $status_filtro;
+        }
+        if ($id_fornecedor > 0) {
+            $sql .= " AND h.cnpj_fornecedor = (SELECT cnpj FROM consumo_fornecedores WHERE id = ?)";
+            $params[] = $id_fornecedor;
+        }
+        if ($id_especialidade > 0) {
+            $sql .= " AND h.cnpj_fornecedor IN (SELECT cnpj_fornecedor FROM consumo_fornecedor_especialidade WHERE id_especialidade = ?)";
+            $params[] = $id_especialidade;
+        }
+
+        $sql .= " ORDER BY h.data_transicao DESC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $historico = $stmt->fetchAll();
+
+        // 3. Estatísticas resumidas
+        $total_transicoes = count($historico);
+        $total_critico = count(array_filter($historico, fn($r) => $r['status_novo'] === 'critico'));
+        $total_alerta = count(array_filter($historico, fn($r) => $r['status_novo'] === 'alerta'));
+        $total_normal = count(array_filter($historico, fn($r) => $r['status_novo'] === 'normal'));
+
+        // 4. Listas para filtros
+        $stmt_especialidades = $pdo->query('SELECT id, nome FROM consumo_especialidades ORDER BY nome');
+        $especialidades = $stmt_especialidades->fetchAll();
+
+        $stmt_fornecedores = $pdo->query('SELECT id, name FROM consumo_fornecedores ORDER BY name');
+        $fornecedores = $stmt_fornecedores->fetchAll();
+
+        View::render('consumo_relatorios', [
+            'historico' => $historico,
+            'total_transicoes' => $total_transicoes,
+            'total_critico' => $total_critico,
+            'total_alerta' => $total_alerta,
+            'total_normal' => $total_normal,
+            'data_inicio' => $data_inicio,
+            'data_fim' => $data_fim,
+            'status_filtro' => $status_filtro,
+            'id_especialidade' => $id_especialidade,
+            'id_fornecedor' => $id_fornecedor,
+            'especialidades' => $especialidades,
+            'fornecedores' => $fornecedores,
+            'csrf_token' => Csrf::token()
+        ]);
+    }
+
+    /**
+     * Endpoint que gera e baixa o CSV do histórico de transições de status.
+     */
+    public function exportCsv(): void
+    {
+        $this->auth->requireLogin();
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="relatorio_consumo_' . date('Y-m-d_His') . '.csv"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $data_inicio = trim((string)($_GET['data_inixo'] ?? $_GET['data_inicio'] ?? ''));
+        $data_fim = trim((string)($_GET['data_fim'] ?? ''));
+        $status_filtro = trim((string)($_GET['status'] ?? ''));
+        $id_especialidade = (int)($_GET['id_especialidade'] ?? 0);
+        $id_fornecedor = (int)($_GET['id_fornecedor'] ?? 0);
+
+        $pdo = Database::pdo();
+
+        $sql = "
+            SELECT 
+                h.cd_material,
+                COALESCE(c.descricao, 'Material Desconhecido') AS descricao,
+                h.cnpj_fornecedor,
+                COALESCE(f.name, 'Não identificado') AS fornecedor,
+                h.status_anterior,
+                h.status_novo,
+                h.saldo_momento,
+                h.media_momento,
+                DATE_FORMAT(h.data_transicao, '%d/%m/%Y %H:%i') AS data_transicao
+            FROM consumo_status_historico h
+            LEFT JOIN consumo_materiais c ON h.cd_material = c.codigo
+            LEFT JOIN consumo_fornecedores f ON f.cnpj = h.cnpj_fornecedor
+            WHERE 1=1
+        ";
+        $params = [];
+
+        if ($data_inicio !== '') {
+            $sql .= " AND h.data_transicao >= ?";
+            $params[] = date('Y-m-d 00:00:00', strtotime($data_inicio));
+        }
+        if ($data_fim !== '') {
+            $sql .= " AND h.data_transicao <= ?";
+            $params[] = date('Y-m-d 23:59:59', strtotime($data_fim));
+        }
+        if ($status_filtro !== '') {
+            $sql .= " AND h.status_novo = ?";
+            $params[] = $status_filtro;
+        }
+        if ($id_fornecedor > 0) {
+            $sql .= " AND h.cnpj_fornecedor = (SELECT cnpj FROM consumo_fornecedores WHERE id = ?)";
+            $params[] = $id_fornecedor;
+        }
+        if ($id_especialidade > 0) {
+            $sql .= " AND h.cnpj_fornecedor IN (SELECT cnpj_fornecedor FROM consumo_fornecedor_especialidade WHERE id_especialidade = ?)";
+            $params[] = $id_especialidade;
+        }
+
+        $sql .= " ORDER BY h.data_transicao DESC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        // Usa php://output para streaming direto do CSV
+        $output = fopen('php://output', 'w');
+
+        // Header BOM UTF-8 para Excel
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        // Cabeçalhos delimitados por ponto e vírgula
+        fputcsv($output, [
+            'Cod_Material',
+            'Material',
+            'CNPJ_Fornecedor',
+            'Fornecedor',
+            'Status_Anterior',
+            'Status_Novo',
+            'Saldo_Momento',
+            'Media_Momento',
+            'Data_Transacao'
+        ], ';');
+
+        // Dados
+        while ($row = $stmt->fetch()) {
+            fputcsv($output, [
+                $row['cd_material'],
+                $row['descricao'],
+                $row['cnpj_fornecedor'],
+                $row['fornecedor'],
+                $row['status_anterior'],
+                $row['status_novo'],
+                $row['saldo_momento'],
+                $row['media_momento'],
+                $row['data_transicao']
+            ], ';');
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
      * Endpoint API AJAX que retorna a JSON list of transition history for a given cd_material and cnpj_fornecedor.
      */
     public function getHistoricoStatus(): void

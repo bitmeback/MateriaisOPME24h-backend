@@ -39,5 +39,7 @@ return [
     ['GET', '/api/especialidade-fornecedores', 'EspecialidadesController@getEspecialidadeFornecedores', true],
     ['GET', '/consumo', 'ConsumoController@index', true],
     ['POST', '/consumo/toggle', 'ConsumoController@toggleVinculo', true],
+    ['GET', '/consumo/relatorios', 'ConsumoController@relatorios', true],
+    ['POST', '/api/consumo/export-csv', 'ConsumoController@exportCsv', true],
     ['GET', '/api/consumo/historico', 'ConsumoController@getHistoricoStatus', true],
 ];

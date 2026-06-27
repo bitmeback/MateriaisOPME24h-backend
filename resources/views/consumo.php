@@ -18,6 +18,7 @@ ob_start();
 
 <div class="nav nav-top" style="margin-bottom:20px;">
   <a class="btn" href="/especialidades">Especialidades</a>
+  <a class="btn" href="/consumo/relatorios">Relatórios</a>
   <a class="btn btn-secondary" href="/dashboard">Voltar</a>
 </div>
 
@@ -113,11 +114,11 @@ ob_start();
       </colgroup>
       <thead>
         <tr>
-          <th>Código</th>
-          <th>Material</th>
-          <th>Fornecedor Ativo</th>
-          <th style="text-align: right;">Giro Médio 90d</th>
-          <th style="text-align: right;">Físico Atual</th>
+          <th style="text-align: center;">Código</th>
+          <th style="text-align: center;">Material</th>
+          <th style="text-align: center;">Fornecedor Ativo</th>
+          <th style="text-align: center;">Giro Médio 90d</th>
+          <th style="text-align: center;">Físico Atual</th>
           <th style="text-align: center;">Vínculo</th>
           <th style="text-align: center;">Histórico</th>
         </tr>
