@@ -103,12 +103,13 @@ ob_start();
   <div class="table-wrap">
     <table class="list-table">
       <colgroup>
-        <col style="width: 10%;">
-        <col style="width: 45%;">
-        <col style="width: 25%;">
-        <col style="width: 10%;">
-        <col style="width: 10%;">
-        <col style="width: 10%;">
+        <col style="width: 8%;">
+        <col style="width: 40%;">
+        <col style="width: 20%;">
+        <col style="width: 8%;">
+        <col style="width: 8%;">
+        <col style="width: 8%;">
+        <col style="width: 8%;">
       </colgroup>
       <thead>
         <tr>
