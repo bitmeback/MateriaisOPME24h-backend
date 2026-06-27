@@ -192,7 +192,8 @@ final class ConsumoController
             'critico_count' => $criticosCount,
             'alerta_count' => $alertasCount,
             'saudavel_count' => $saudavelCount,
-            'csrf_token' => Csrf::token()
+            'csrf_token' => Csrf::token(),
+            'role' => $_SESSION['role'] ?? 'guest'
         ]);
     }
 
@@ -352,7 +353,8 @@ final class ConsumoController
             'id_fornecedor' => $id_fornecedor,
             'especialidades' => $especialidades,
             'fornecedores' => $fornecedores,
-            'csrf_token' => Csrf::token()
+            'csrf_token' => Csrf::token(),
+            'role' => $_SESSION['role'] ?? 'guest'
         ]);
     }
 
