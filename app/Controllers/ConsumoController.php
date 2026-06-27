@@ -254,4 +254,50 @@ final class ConsumoController
         }
         exit;
     }
+
+    /**
+     * Endpoint API AJAX que retorna a JSON list of transition history for a given cd_material and cnpj_fornecedor.
+     */
+    public function getHistoricoStatus(): void
+    {
+        $this->auth->requireLogin();
+
+        header('Content-Type: application/json');
+
+        $cd_material = (int)($_GET['cd_material'] ?? 0);
+        $cnpj_fornecedor = preg_replace('/[^0-9]/', '', (string)($_GET['cnpj_fornecedor'] ?? ''));
+
+        if ($cd_material <= 0 || strlen($cnpj_fornecedor) !== 14) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Código de material ou CNPJ inválido']);
+            exit;
+        }
+
+        $pdo = Database::pdo();
+
+        try {
+            $stmt = $pdo->prepare("
+                SELECT 
+                    status_anterior, 
+                    status_novo, 
+                    saldo_momento, 
+                    media_momento, 
+                    DATE_FORMAT(data_transicao, '%d/%m/%Y %H:%i') as data_formatada
+                FROM consumo_status_historico
+                WHERE cd_material = ? AND cnpj_fornecedor = ?
+                ORDER BY data_transicao DESC
+            ");
+            $stmt->execute([$cd_material, $cnpj_fornecedor]);
+            $historico = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            echo json_encode([
+                'success' => true,
+                'historico' => $historico
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Erro ao consultar histórico: ' . $e->getMessage()]);
+        }
+        exit;
+    }
 }
