@@ -55,7 +55,7 @@ declare(strict_types=1);
     .table-wrap { overflow-x: auto; }
     .list-panel { max-width: 100%; }
     .list-panel .panel-head { margin-bottom: 12px; }
-    .list-table { width: 100%; table-layout: fixed; }
+    .list-table { width: 100%; table-layout: auto; }
     .list-table th, .list-table td { font-size: 13px; line-height: 1.25; padding: 6px 8px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; }
     .list-table .actions-col, .list-table td.actions { width: 82px; min-width: 82px; max-width: 82px; white-space: nowrap; text-align: center; }
     .list-table .status-cell, .list-table .pending-count { text-align: center; }
