@@ -129,7 +129,7 @@ ob_start();
             $bgStyle = $item['vinculo_ativo'] ? '' : 'background-color: #f3f4f6;';
           ?>
           <tr class="row-hover" style="opacity: <?= $opacity ?>; <?= $bgStyle ?> transition: opacity 0.2s, background-color 0.2s;" id="row_<?= $item['codigo'] ?>_<?= $item['cnpj_fornecedor'] ?>">
-            <td><strong><?= $item['codigo'] ?></strong></td>
+            <td style="text-align: center;"><strong><?= $item['codigo'] ?></strong></td>
             <td>
               <div style="font-weight: 600; color: #111827;"><?= htmlspecialchars($item['descricao'], ENT_QUOTES, 'UTF-8') ?></div>
               <div style="margin-top: 4px; display: flex; gap: 8px; align-items: center;">
@@ -149,10 +149,10 @@ ob_start();
               <div style="font-weight: 500; font-size: 13px; color: #374151;"><?= htmlspecialchars($item['fornecedor'], ENT_QUOTES, 'UTF-8') ?></div>
               <div class="muted" style="font-size:11px; margin-top:2px;">CNPJ: <?= \MateriaisOpme\App\Support\Cnpj::format($item['cnpj_fornecedor']) ?></div>
             </td>
-            <td style="text-align: right; font-weight: 600; font-size: 14px; color: #4b5563;">
+            <td style="text-align: center; font-weight: 600; font-size: 14px; color: #4b5563;">
               <?= number_format($item['media'], 0, ',', '.') ?>
             </td>
-            <td style="text-align: right; font-weight: 700; font-size: 15px; color: <?= $item['status'] === 'critico' ? '#ef4444' : ($item['status'] === 'alerta' ? '#f59e0b' : '#10b981') ?>;">
+            <td style="text-align: center; font-weight: 700; font-size: 15px; color: <?= $item['status'] === 'critico' ? '#ef4444' : ($item['status'] === 'alerta' ? '#f59e0b' : '#10b981') ?>;">
               <?= number_format($item['saldo'], 0, ',', '.') ?>
             </td>
             <td style="text-align: center; vertical-align: middle;">
