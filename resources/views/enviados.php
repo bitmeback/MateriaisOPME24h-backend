@@ -5,8 +5,8 @@ ob_start();
 <h1>Enviados</h1>
 <p class="muted">Histórico de relatórios enviados aos fornecedores via e-mail.</p>
 <div class="nav nav-top">
-  <a class="btn btn-secondary" href="/dashboard">Voltar</a>
   <a class="btn" href="/fornecedores">Fornecedores</a>
+  <a class="btn btn-secondary" href="/dashboard">Voltar</a>
 </div>
 
 <?php if (!empty($success)): ?>

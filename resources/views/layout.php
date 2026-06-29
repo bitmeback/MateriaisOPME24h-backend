@@ -31,6 +31,15 @@ declare(strict_types=1);
     .search-bar input { flex: 1; min-width: 280px; margin: 0; }
     .search-bar select { width: auto; min-width: 180px; margin: 0; }
     .search-bar .btn { margin: 0; }
+    .filter-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; margin: 12px 0 16px; }
+    .filter-row { display: flex; gap: 10px; align-items: flex-end; }
+    .filter-row + .filter-row { margin-top: 10px; }
+    .filter-field { display: flex; flex-direction: column; gap: 2px; }
+    .filter-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+    .filter-field input, .filter-field select { width: auto; min-width: 140px; padding: 7px 10px; margin: 0; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: #fff; }
+    .filter-field input[type="date"] { min-width: 130px; }
+    .filter-actions { display: flex; gap: 6px; align-items: flex-end; }
+    .filter-spacer { font-size: 11px; font-weight: 700; color: transparent; text-transform: uppercase; letter-spacing: .04em; height: 14px; }
     .pagination { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
     .pagination .btn { margin: 0; }
     .actions { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; min-width: 360px; }

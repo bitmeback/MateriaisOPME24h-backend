@@ -5,8 +5,8 @@ $values = $values ?? [];
 ?>
 <h1>Configurações do sistema</h1>
 <div class="nav nav-top">
-  <a class="btn btn-secondary" href="/dashboard">Voltar</a>
   <a class="btn" href="/configuracoes/credenciais">Credenciais</a>
+  <a class="btn btn-secondary" href="/dashboard">Voltar</a>
 </div>
 <p class="muted">Gerenciamento de informações do sistema. Só altere sob recomendação de um desenvolvedor.</p>
 <?php if (!empty($error)): ?>

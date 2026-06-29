@@ -53,7 +53,7 @@ final class ConsumoController
                 COALESCE(f.name, 'Não identificado') AS ds_fornecedor,
                 s.saldo,
                 COALESCE(cad.descricao, 'Material Desconhecido') AS descricao,
-                COALESCE(ROUND(SUM(c.consumo) / NULLIF(COUNT(DISTINCT c.mes), 0), 1), 0) AS media_trimestre
+                COALESCE(ROUND(SUM(c.consumo) / NULLIF(COUNT(DISTINCT c.mes), 0)), 0) AS media_trimestre
             FROM saldo_estoque_atual s
             LEFT JOIN consumo_materiais_cadastro cad ON s.cd_material = cad.cd_material
             LEFT JOIN consumo_materiais c ON s.cd_material = c.codigo
@@ -110,28 +110,25 @@ final class ConsumoController
                 $threshold_warning = 0;
                 $ratio = 999.0;
             } elseif ($media <= 3) {
-                // Grupo A — consumo esporádico/baixo
-                $threshold_critico = 0;
-                $threshold_warning = (float)ceil($media);
-                if ($saldo <= 0) {
+                // Grupo A: saldo >= média = OK, saldo < média = CRITICAL (sem warning)
+                $threshold_critico = (float)$media;
+                $threshold_warning = (float)$media;
+                if ($saldo < $media) {
                     $status = 'critico';
                     $status_desc = 'Crítico';
-                } elseif ($saldo < $threshold_warning) {
-                    $status = 'alerta';
-                    $status_desc = 'Alerta';
                 } else {
                     $status = 'normal';
                     $status_desc = 'Saudável';
                 }
                 $ratio = $media > 0 ? ($saldo / $media) : 999.0;
             } else {
-                // Grupo B — consumo regular/alto
-                $threshold_critico = (float)ceil($media * 0.9);
-                $threshold_warning = (float)ceil($media);
-                if ($saldo <= $threshold_critico) {
+                // Grupo B: saldo >= média = OK, >= 90% = WARNING, < 90% = CRITICAL
+                $threshold_critico = (float)round($media * 0.9);
+                $threshold_warning = (float)$media;
+                if ($saldo < $threshold_critico) {
                     $status = 'critico';
                     $status_desc = 'Crítico';
-                } elseif ($saldo <= $threshold_warning) {
+                } elseif ($saldo < $threshold_warning) {
                     $status = 'alerta';
                     $status_desc = 'Alerta';
                 } else {

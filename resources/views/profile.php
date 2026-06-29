@@ -5,10 +5,10 @@ $user = $user ?? [];
 ?>
 <h1>Perfil</h1>
 <div class="nav nav-top">
-  <a class="btn btn-secondary" href="/dashboard">Voltar</a>
   <?php if (in_array((string)($user['role'] ?? ''), ['admin', 'desenv'], true)): ?>
     <a class="btn" href="/configuracoes/sistema">Configurações</a>
   <?php endif; ?>
+  <a class="btn btn-secondary" href="/dashboard">Voltar</a>
 </div>
 
 <?php if (!empty($error)): ?>

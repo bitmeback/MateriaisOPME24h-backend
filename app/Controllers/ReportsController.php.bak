@@ -47,19 +47,19 @@ final class ReportsController
 
         if ($name === '') {
             $_SESSION['flash_error'] = 'Nome é obrigatório.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         }
 
         if ($email === '' && $phone === '') {
             $_SESSION['flash_error'] = 'Informe pelo menos um e-mail ou telefone.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         }
 
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $_SESSION['flash_error'] = 'E-mail inválido.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         }
 
@@ -76,11 +76,11 @@ final class ReportsController
                 'active' => $active,
             ]);
             $_SESSION['flash_success'] = 'Destinatário cadastrado com sucesso.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         } catch (\Throwable $e) {
             $_SESSION['flash_error'] = 'Erro ao cadastrar: ' . $e->getMessage();
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         }
     }
@@ -96,18 +96,18 @@ final class ReportsController
         $id = (int)$id;
         if ($id <= 0) {
             $_SESSION['flash_error'] = 'ID inválido.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         }
 
         try {
             $this->repo->delete($id);
             $_SESSION['flash_success'] = 'Destinatário removido com sucesso.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         } catch (\Throwable $e) {
             $_SESSION['flash_error'] = 'Erro ao remover: ' . $e->getMessage();
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         }
     }
@@ -117,14 +117,14 @@ final class ReportsController
         $id = (int)$id;
         if ($id <= 0) {
             $_SESSION['flash_error'] = 'ID inválido.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         }
 
         $recipient = $this->repo->findById($id);
         if ($recipient === null) {
             $_SESSION['flash_error'] = 'Destinatário não encontrado.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         }
 
@@ -152,7 +152,7 @@ final class ReportsController
         $id = (int)$id;
         if ($id <= 0) {
             $_SESSION['flash_error'] = 'ID inválido.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         }
 
@@ -164,19 +164,19 @@ final class ReportsController
 
         if ($name === '') {
             $_SESSION['flash_error'] = 'Nome é obrigatório.';
-            header("Location: /usuarios/reports/editar/{$id}");
+            header("Location: /reports/editar/{$id}");
             exit;
         }
 
         if ($email === '' && $phone === '') {
             $_SESSION['flash_error'] = 'Informe pelo menos um e-mail ou telefone.';
-            header("Location: /usuarios/reports/editar/{$id}");
+            header("Location: /reports/editar/{$id}");
             exit;
         }
 
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $_SESSION['flash_error'] = 'E-mail inválido.';
-            header("Location: /usuarios/reports/editar/{$id}");
+            header("Location: /reports/editar/{$id}");
             exit;
         }
 
@@ -193,11 +193,11 @@ final class ReportsController
                 'active' => $active,
             ]);
             $_SESSION['flash_success'] = 'Destinatário atualizado com sucesso.';
-            header('Location: /usuarios/reports');
+            header('Location: /reports');
             exit;
         } catch (\Throwable $e) {
             $_SESSION['flash_error'] = 'Erro ao atualizar: ' . $e->getMessage();
-            header("Location: /usuarios/reports/editar/{$id}");
+            header("Location: /reports/editar/{$id}");
             exit;
         }
     }

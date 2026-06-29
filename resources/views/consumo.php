@@ -71,51 +71,70 @@ ob_start();
   </div>
 
   <!-- Barra de Busca e Filtro de Threshold -->
-  <form method="get" action="/consumo" class="search-bar" style="margin-bottom:16px;">
-    <input type="text" name="q" value="<?= htmlspecialchars($busca, ENT_QUOTES, 'UTF-8') ?>" placeholder="Buscar por material, c&#243;digo ou fornecedor" style="flex:1;">
-    
-    <select name="uso">
-      <option value="utilizados" <?= $filtro_uso === 'utilizados' ? 'selected' : '' ?>>&#9889; Utilizados</option>
-      <option value="nao_utilizados" <?= $filtro_uso === 'nao_utilizados' ? 'selected' : '' ?>>&#128196; N&#227;o Utilizados</option>
-      <option value="todos" <?= $filtro_uso === 'todos' ? 'selected' : '' ?>>&#128193; Todos</option>
-    </select>
-
-    <select name="vinculo">
-      <option value="ativos" <?= $filtro_vinculo === 'ativos' ? 'selected' : '' ?>>🔗 Apenas Vínculos Ativos (Padrão)</option>
-      <option value="inativos" <?= $filtro_vinculo === 'inativos' ? 'selected' : '' ?>>🚫 Apenas Vínculos Inativos</option>
-      <option value="todos" <?= $filtro_vinculo === 'todos' ? 'selected' : '' ?>>📁 Todos os Vínculos</option>
-    </select>
-
-    <select name="status">
-      <option value="">Todos os status de estoque</option>
-      <option value="critico" <?= $filtro_status === 'critico' ? 'selected' : '' ?>>🔴 Crítico (Ruptura)</option>
-      <option value="alerta" <?= $filtro_status === 'alerta' ? 'selected' : '' ?>>🟠 Alerta (Prevenção)</option>
-      <option value="normal" <?= $filtro_status === 'normal' ? 'selected' : '' ?>>🟢 Saudável</option>
-      <option value="sem_giro" <?= $filtro_status === 'sem_giro' ? 'selected' : '' ?>>🟣 Sem Giro</option>
-      <option value="inativo" <?= $filtro_status === 'inativo' ? 'selected' : '' ?>>⚪ Inativo</option>
-    </select>
-
-    <select name="sort">
-      <option value="status_ratio" <?= $sort === 'status_ratio' ? 'selected' : '' ?>>Criticidade (Crítico primeiro)</option>
-      <option value="nome_asc" <?= $sort === 'nome_asc' ? 'selected' : '' ?>>Descrição (A→Z)</option>
-      <option value="nome_desc" <?= $sort === 'nome_desc' ? 'selected' : '' ?>>Descrição (Z→A)</option>
-      <option value="codigo_asc" <?= $sort === 'codigo_asc' ? 'selected' : '' ?>>Código (Crescente)</option>
-      <option value="codigo_desc" <?= $sort === 'codigo_desc' ? 'selected' : '' ?>>Código (Decrescente)</option>
-      <option value="saldo_asc" <?= $sort === 'saldo_asc' ? 'selected' : '' ?>>Saldo (Menor primeiro)</option>
-      <option value="saldo_desc" <?= $sort === 'saldo_desc' ? 'selected' : '' ?>>Saldo (Maior primeiro)</option>
-      <option value="media_desc" <?= $sort === 'media_desc' ? 'selected' : '' ?>>Giro Médio (Maior primeiro)</option>
-    </select>
-
-    <select name="per_page">
-      <?php foreach ([20, 50, 100] as $n): ?>
-        <option value="<?= $n ?>" <?= (int)($pagination['per_page'] ?? 20) === $n ? 'selected' : '' ?>><?= $n ?> por página</option>
-      <?php endforeach; ?>
-    </select>
-
-    <button class="btn" type="submit">Filtrar</button>
-    <?php if ($busca !== '' || $filtro_status !== '' || $filtro_vinculo !== 'ativos' || $filtro_uso !== 'utilizados' || $sort !== 'status_ratio'): ?>
-      <a class="btn btn-secondary" href="/consumo">Limpar Filtros</a>
-    <?php endif; ?>
+  <form method="get" action="/consumo" class="filter-bar">
+    <div class="filter-row">
+      <div class="filter-field">
+        <label class="filter-label">Buscar</label>
+        <input type="text" name="q" value="<?= htmlspecialchars($busca, ENT_QUOTES, 'UTF-8') ?>" placeholder="Material, código ou fornecedor" style="min-width:450px;">
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Uso</label>
+        <select name="uso">
+          <option value="utilizados" <?= $filtro_uso === 'utilizados' ? 'selected' : '' ?>>⚡ Utilizados</option>
+          <option value="nao_utilizados" <?= $filtro_uso === 'nao_utilizados' ? 'selected' : '' ?>>📄 Não Utilizados</option>
+          <option value="todos" <?= $filtro_uso === 'todos' ? 'selected' : '' ?>>📁 Todos</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Vínculo</label>
+        <select name="vinculo">
+          <option value="ativos" <?= $filtro_vinculo === 'ativos' ? 'selected' : '' ?>>🔗 Ativos</option>
+          <option value="inativos" <?= $filtro_vinculo === 'inativos' ? 'selected' : '' ?>>🚫 Inativos</option>
+          <option value="todos" <?= $filtro_vinculo === 'todos' ? 'selected' : '' ?>>📁 Todos</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Status</label>
+        <select name="status">
+          <option value="">Todos</option>
+          <option value="critico" <?= $filtro_status === 'critico' ? 'selected' : '' ?>>🔴 Crítico</option>
+          <option value="alerta" <?= $filtro_status === 'alerta' ? 'selected' : '' ?>>🟠 Alerta</option>
+          <option value="normal" <?= $filtro_status === 'normal' ? 'selected' : '' ?>>🟢 Saudável</option>
+          <option value="sem_giro" <?= $filtro_status === 'sem_giro' ? 'selected' : '' ?>>🟣 Sem Giro</option>
+          <option value="inativo" <?= $filtro_status === 'inativo' ? 'selected' : '' ?>>⚪ Inativo</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Ordenação</label>
+        <select name="sort">
+          <option value="status_ratio" <?= $sort === 'status_ratio' ? 'selected' : '' ?>>Criticidade</option>
+          <option value="nome_asc" <?= $sort === 'nome_asc' ? 'selected' : '' ?>>Material (A→Z)</option>
+          <option value="nome_desc" <?= $sort === 'nome_desc' ? 'selected' : '' ?>>Material (Z→A)</option>
+          <option value="codigo_asc" <?= $sort === 'codigo_asc' ? 'selected' : '' ?>>Código ↑</option>
+          <option value="codigo_desc" <?= $sort === 'codigo_desc' ? 'selected' : '' ?>>Código ↓</option>
+          <option value="saldo_asc" <?= $sort === 'saldo_asc' ? 'selected' : '' ?>>Saldo ↑</option>
+          <option value="saldo_desc" <?= $sort === 'saldo_desc' ? 'selected' : '' ?>>Saldo ↓</option>
+          <option value="media_desc" <?= $sort === 'media_desc' ? 'selected' : '' ?>>Média ↓</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Página</label>
+        <select name="per_page">
+          <?php foreach ([20, 50, 100] as $n): ?>
+            <option value="<?= $n ?>" <?= (int)($pagination['per_page'] ?? 20) === $n ? 'selected' : '' ?>><?= $n ?>/pág</option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label" style="visibility:hidden;">Ações</label>
+        <div style="display:flex; gap:6px;">
+          <button type="submit" class="btn" style="margin:0;">Filtrar</button>
+          <?php if ($busca !== '' || $filtro_status !== '' || $filtro_vinculo !== 'ativos' || $filtro_uso !== 'utilizados' || $sort !== 'status_ratio'): ?>
+            <a class="btn btn-secondary" href="/consumo">Limpar</a>
+          <?php endif; ?>
+        </div>
+      </div>
+    </div>
   </form>
 
   <?php if (!empty($pagination) && ($pagination['total'] ?? 0) > 0): ?>
@@ -143,8 +162,8 @@ ob_start();
           <th style="text-align: center;">Código</th>
           <th style="text-align: center;">Material</th>
           <th style="text-align: center;">Fornecedor Ativo</th>
-          <th style="text-align: center;">Giro Médio 90d</th>
-          <th style="text-align: center;">Físico Atual</th>
+          <th style="text-align: center;">Média 90d</th>
+          <th style="text-align: center;">Saldo</th>
           <th style="text-align: center;">Vínculo</th>
           <th style="text-align: center;">Histórico</th>
         </tr>

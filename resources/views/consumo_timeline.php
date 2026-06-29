@@ -133,46 +133,66 @@ ob_start();
     </div>
   </div>
 
-  <form method="get" action="/consumo/timeline" class="search-bar">
-    <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>" title="Data Início">
-    <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>" title="Data Fim">
-    <input type="text" name="q" value="<?= htmlspecialchars($busca, ENT_QUOTES, 'UTF-8') ?>" placeholder="Buscar por material, código ou fornecedor" style="flex:1;">
-
-    <select name="vinculo">
-      <option value="ativos" <?= $filtro_vinculo === 'ativos' ? 'selected' : '' ?>>🔗 Vínculos Ativos</option>
-      <option value="inativos" <?= $filtro_vinculo === 'inativos' ? 'selected' : '' ?>>🚫 Vínculos Inativos</option>
-      <option value="todos" <?= $filtro_vinculo === 'todos' ? 'selected' : '' ?>>📁 Todos os Vínculos</option>
-    </select>
-
-    <select name="status">
-      <option value="">Todos os status</option>
-      <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico</option>
-      <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>🟠 Alerta</option>
-      <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>🟢 Normal</option>
-      <option value="sem_giro" <?= $status_filtro === 'sem_giro' ? 'selected' : '' ?>>🟣 Sem Giro</option>
-      <option value="inativo" <?= $status_filtro === 'inativo' ? 'selected' : '' ?>>⚪ Inativo</option>
-    </select>
-
-    <select name="sort">
-      <option value="data_desc" <?= $sort === 'data_desc' ? 'selected' : '' ?>>Data (Mais recente)</option>
-      <option value="data_asc" <?= $sort === 'data_asc' ? 'selected' : '' ?>>Data (Mais antiga)</option>
-      <option value="codigo_asc" <?= $sort === 'codigo_asc' ? 'selected' : '' ?>>Código (Crescente)</option>
-      <option value="codigo_desc" <?= $sort === 'codigo_desc' ? 'selected' : '' ?>>Código (Decrescente)</option>
-      <option value="material_asc" <?= $sort === 'material_asc' ? 'selected' : '' ?>>Material (A→Z)</option>
-      <option value="material_desc" <?= $sort === 'material_desc' ? 'selected' : '' ?>>Material (Z→A)</option>
-      <option value="fornecedor_asc" <?= $sort === 'fornecedor_asc' ? 'selected' : '' ?>>Fornecedor (A→Z)</option>
-      <option value="fornecedor_desc" <?= $sort === 'fornecedor_desc' ? 'selected' : '' ?>>Fornecedor (Z→A)</option>
-      <option value="saldo_asc" <?= $sort === 'saldo_asc' ? 'selected' : '' ?>>Saldo (Menor primeiro)</option>
-      <option value="saldo_desc" <?= $sort === 'saldo_desc' ? 'selected' : '' ?>>Saldo (Maior primeiro)</option>
-      <option value="media_asc" <?= $sort === 'media_asc' ? 'selected' : '' ?>>Média (Menor primeiro)</option>
-      <option value="media_desc" <?= $sort === 'media_desc' ? 'selected' : '' ?>>Média (Maior primeiro)</option>
-    </select>
-
-    <button type="submit" class="btn">Filtrar</button>
-
-    <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $busca !== '' || $filtro_vinculo !== 'ativos' || $sort !== 'data_desc'): ?>
-      <a class="btn btn-secondary" href="/consumo/timeline">Limpar</a>
-    <?php endif; ?>
+  <form method="get" action="/consumo/timeline" class="filter-bar">
+    <div class="filter-row">
+      <div class="filter-field">
+        <label class="filter-label">Data Início</label>
+        <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>">
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Data Fim</label>
+        <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>">
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Buscar</label>
+        <input type="text" name="q" value="<?= htmlspecialchars($busca, ENT_QUOTES, 'UTF-8') ?>" placeholder="Material, código ou fornecedor" style="min-width:450px;">
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Vínculo</label>
+        <select name="vinculo">
+          <option value="ativos" <?= $filtro_vinculo === 'ativos' ? 'selected' : '' ?>>🔗 Ativos</option>
+          <option value="inativos" <?= $filtro_vinculo === 'inativos' ? 'selected' : '' ?>>🚫 Inativos</option>
+          <option value="todos" <?= $filtro_vinculo === 'todos' ? 'selected' : '' ?>>📁 Todos</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Status</label>
+        <select name="status">
+          <option value="">Todos</option>
+          <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico</option>
+          <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>🟠 Alerta</option>
+          <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>🟢 Normal</option>
+          <option value="sem_giro" <?= $status_filtro === 'sem_giro' ? 'selected' : '' ?>>🟣 Sem Giro</option>
+          <option value="inativo" <?= $status_filtro === 'inativo' ? 'selected' : '' ?>>⚪ Inativo</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">Ordenação</label>
+        <select name="sort">
+          <option value="data_desc" <?= $sort === 'data_desc' ? 'selected' : '' ?>>Data (Recente)</option>
+          <option value="data_asc" <?= $sort === 'data_asc' ? 'selected' : '' ?>>Data (Antiga)</option>
+          <option value="codigo_asc" <?= $sort === 'codigo_asc' ? 'selected' : '' ?>>Código ↑</option>
+          <option value="codigo_desc" <?= $sort === 'codigo_desc' ? 'selected' : '' ?>>Código ↓</option>
+          <option value="material_asc" <?= $sort === 'material_asc' ? 'selected' : '' ?>>Material (A→Z)</option>
+          <option value="material_desc" <?= $sort === 'material_desc' ? 'selected' : '' ?>>Material (Z→A)</option>
+          <option value="fornecedor_asc" <?= $sort === 'fornecedor_asc' ? 'selected' : '' ?>>Fornecedor (A→Z)</option>
+          <option value="fornecedor_desc" <?= $sort === 'fornecedor_desc' ? 'selected' : '' ?>>Fornecedor (Z→A)</option>
+          <option value="saldo_asc" <?= $sort === 'saldo_asc' ? 'selected' : '' ?>>Saldo ↑</option>
+          <option value="saldo_desc" <?= $sort === 'saldo_desc' ? 'selected' : '' ?>>Saldo ↓</option>
+          <option value="media_asc" <?= $sort === 'media_asc' ? 'selected' : '' ?>>Média ↑</option>
+          <option value="media_desc" <?= $sort === 'media_desc' ? 'selected' : '' ?>>Média ↓</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label" style="visibility:hidden;">Ações</label>
+        <div style="display:flex; gap:6px;">
+          <button type="submit" class="btn" style="margin:0;">Filtrar</button>
+          <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $busca !== '' || $filtro_vinculo !== 'ativos' || $sort !== 'data_desc'): ?>
+            <a class="btn btn-secondary" href="/consumo/timeline">Limpar</a>
+          <?php endif; ?>
+        </div>
+      </div>
+    </div>
   </form>
 
   <?php if (empty($snapshots)): ?>
@@ -197,7 +217,7 @@ ob_start();
           <th>Fornecedor</th>
           <th style="text-align:center;">Status</th>
           <th style="text-align:center;">Saldo</th>
-          <th style="text-align:center;">Média</th>
+          <th style="text-align:center;">Méd. Snap</th>
         </tr>
       </thead>
       <tbody>
@@ -223,8 +243,8 @@ ob_start();
                 <span class="status-tag" style="background:#ecfdf5;color:#10b981;border:1px solid #a7f3d0;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟢 NORMAL</span>
               <?php endif; ?>
             </td>
-            <td style="text-align:center;font-weight:700;"><?= number_format((float)$row['saldo'], 1, ',', '.') ?></td>
-            <td style="text-align:center;"><?= number_format((float)$row['media_trimestre'], 1, ',', '.') ?></td>
+            <td style="text-align:center;font-weight:700;"><?= number_format((float)$row['saldo'], 0, ',', '.') ?></td>
+            <td style="text-align:center;"><?= number_format((float)$row['media_trimestre'], 0, ',', '.') ?></td>
           </tr>
         <?php endforeach; ?>
       </tbody>
