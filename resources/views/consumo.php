@@ -5,12 +5,15 @@ ob_start();
 /** @var string $busca */
 /** @var string $filtro_status */
 /** @var string $filtro_vinculo */
+/** @var string $filtro_uso */
 /** @var string $sort */
 /** @var array $pagination */
 /** @var int $total_count */
 /** @var int $critico_count */
 /** @var int $alerta_count */
 /** @var int $saudavel_count */
+/** @var int $sem_giro_count */
+/** @var int $inativo_count */
 /** @var string $csrf_token */
 ?>
 <h1>Monitor de Estoque de Consumo OPME</h1>
@@ -43,8 +46,22 @@ ob_start();
   <div class="dashboard-card" style="flex:1; min-width:200px; border-left: 4px solid #3b82f6; padding: 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px;">
     <span style="font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase;">Sob Giro Visualizado</span>
     <h2 style="margin:8px 0 0; font-size:28px; color:#3b82f6;"><?= $total_count ?></h2>
-    <p class="muted" style="margin:4px 0 0; font-size:12px;">Itens ativos em circulação no giro</p>
+    <p class="muted" style="margin:4px 0 0; font-size:12px;">Itens ativos em circula&#231;&#227;o no giro</p>
   </div>
+  <?php if ($sem_giro_count > 0): ?>
+  <div class="dashboard-card" style="flex:1; min-width:200px; border-left: 4px solid #8b5cf6; padding: 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px;">
+    <span style="font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase;">Sem Giro</span>
+    <h2 style="margin:8px 0 0; font-size:28px; color:#8b5cf6;"><?= $sem_giro_count ?></h2>
+    <p class="muted" style="margin:4px 0 0; font-size:12px;">Estoque parado sem consumo recente</p>
+  </div>
+  <?php endif; ?>
+  <?php if ($inativo_count > 0): ?>
+  <div class="dashboard-card" style="flex:1; min-width:200px; border-left: 4px solid #9ca3af; padding: 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px;">
+    <span style="font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase;">Inativos</span>
+    <h2 style="margin:8px 0 0; font-size:28px; color:#9ca3af;"><?= $inativo_count ?></h2>
+    <p class="muted" style="margin:4px 0 0; font-size:12px;">Sem estoque e sem consumo</p>
+  </div>
+  <?php endif; ?>
 </div>
 
 <section class="panel list-panel">
@@ -55,8 +72,14 @@ ob_start();
 
   <!-- Barra de Busca e Filtro de Threshold -->
   <form method="get" action="/consumo" class="search-bar" style="margin-bottom:16px;">
-    <input type="text" name="q" value="<?= htmlspecialchars($busca, ENT_QUOTES, 'UTF-8') ?>" placeholder="Buscar por material, código ou fornecedor" style="flex:1;">
+    <input type="text" name="q" value="<?= htmlspecialchars($busca, ENT_QUOTES, 'UTF-8') ?>" placeholder="Buscar por material, c&#243;digo ou fornecedor" style="flex:1;">
     
+    <select name="uso">
+      <option value="utilizados" <?= $filtro_uso === 'utilizados' ? 'selected' : '' ?>>&#9889; Utilizados</option>
+      <option value="nao_utilizados" <?= $filtro_uso === 'nao_utilizados' ? 'selected' : '' ?>>&#128196; N&#227;o Utilizados</option>
+      <option value="todos" <?= $filtro_uso === 'todos' ? 'selected' : '' ?>>&#128193; Todos</option>
+    </select>
+
     <select name="vinculo">
       <option value="ativos" <?= $filtro_vinculo === 'ativos' ? 'selected' : '' ?>>🔗 Apenas Vínculos Ativos (Padrão)</option>
       <option value="inativos" <?= $filtro_vinculo === 'inativos' ? 'selected' : '' ?>>🚫 Apenas Vínculos Inativos</option>
@@ -68,6 +91,8 @@ ob_start();
       <option value="critico" <?= $filtro_status === 'critico' ? 'selected' : '' ?>>🔴 Crítico (Ruptura)</option>
       <option value="alerta" <?= $filtro_status === 'alerta' ? 'selected' : '' ?>>🟠 Alerta (Prevenção)</option>
       <option value="normal" <?= $filtro_status === 'normal' ? 'selected' : '' ?>>🟢 Saudável</option>
+      <option value="sem_giro" <?= $filtro_status === 'sem_giro' ? 'selected' : '' ?>>🟣 Sem Giro</option>
+      <option value="inativo" <?= $filtro_status === 'inativo' ? 'selected' : '' ?>>⚪ Inativo</option>
     </select>
 
     <select name="sort">
@@ -88,7 +113,7 @@ ob_start();
     </select>
 
     <button class="btn" type="submit">Filtrar</button>
-    <?php if ($busca !== '' || $filtro_status !== '' || $filtro_vinculo !== 'ativos' || $sort !== 'status_ratio'): ?>
+    <?php if ($busca !== '' || $filtro_status !== '' || $filtro_vinculo !== 'ativos' || $filtro_uso !== 'utilizados' || $sort !== 'status_ratio'): ?>
       <a class="btn btn-secondary" href="/consumo">Limpar Filtros</a>
     <?php endif; ?>
   </form>
@@ -141,6 +166,12 @@ ob_start();
                 <?php elseif ($item['status'] === 'alerta'): ?>
                   <span class="status-tag" style="background: #fef3c7; color: #f59e0b; border: 1px solid #fcd34d; padding: 2px 6px; font-size: 11px; font-weight: 700; border-radius: 4px;">🟠 ALERTA</span>
                   <span class="muted" style="font-size: 11px;">Atenção (Margem: <?= $item['threshold_warning'] ?>)</span>
+                <?php elseif ($item['status'] === 'sem_giro'): ?>
+                  <span class="status-tag" style="background: #f3e8ff; color: #8b5cf6; border: 1px solid #c4b5fd; padding: 2px 6px; font-size: 11px; font-weight: 700; border-radius: 4px;">🟣 SEM GIRO</span>
+                  <span class="muted" style="font-size: 11px;">Estoque parado sem consumo recente</span>
+                <?php elseif ($item['status'] === 'inativo'): ?>
+                  <span class="status-tag" style="background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; padding: 2px 6px; font-size: 11px; font-weight: 700; border-radius: 4px;">⚪ INATIVO</span>
+                  <span class="muted" style="font-size: 11px;">Sem estoque e sem consumo</span>
                 <?php else: ?>
                   <span class="status-tag" style="background: #ecfdf5; color: #10b981; border: 1px solid #a7f3d0; padding: 2px 6px; font-size: 11px; font-weight: 700; border-radius: 4px;">🟢 ESTÁVEL</span>
                   <span class="muted" style="font-size: 11px;">Margem segura</span>
@@ -152,9 +183,9 @@ ob_start();
               <div class="muted" style="font-size:11px; margin-top:2px;">CNPJ: <?= \MateriaisOpme\App\Support\Cnpj::format($item['cnpj_fornecedor']) ?></div>
             </td>
             <td style="text-align: center; font-weight: 600; font-size: 14px; color: #4b5563;">
-              <?= number_format($item['media'], 0, ',', '.') ?>
+              <?= $item['media'] < 1 ? '<span style="color:#9ca3af;">—</span>' : number_format($item['media'], 0, ',', '.') ?>
             </td>
-            <td style="text-align: center; font-weight: 700; font-size: 15px; color: <?= $item['status'] === 'critico' ? '#ef4444' : ($item['status'] === 'alerta' ? '#f59e0b' : '#10b981') ?>;">
+            <td style="text-align: center; font-weight: 700; font-size: 15px; color: <?= $item['status'] === 'critico' ? '#ef4444' : ($item['status'] === 'alerta' ? '#f59e0b' : ($item['status'] === 'sem_giro' ? '#8b5cf6' : ($item['status'] === 'inativo' ? '#9ca3af' : '#10b981'))) ?>;">
               <?= number_format($item['saldo'], 0, ',', '.') ?>
             </td>
             <td style="text-align: center; vertical-align: middle;">
@@ -180,6 +211,7 @@ ob_start();
     <?php
       $baseParams = [
         'q' => (string)$busca,
+        'uso' => (string)$filtro_uso,
         'status' => (string)$filtro_status,
         'vinculo' => (string)$filtro_vinculo,
         'sort' => (string)$sort,

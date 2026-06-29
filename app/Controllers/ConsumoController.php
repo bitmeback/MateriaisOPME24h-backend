@@ -25,6 +25,7 @@ final class ConsumoController
         $status_filtro = trim((string)($_GET['status'] ?? ''));
         $sort = trim((string)($_GET['sort'] ?? 'status_ratio'));
         $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos')); // padrão: apenas ativos
+        $filtro_uso = trim((string)($_GET['uso'] ?? 'utilizados')); // utilizados | nao_utilizados | todos
         $page = max(1, (int)($_GET['page'] ?? 1));
         $perPage = max(1, min(100, (int)($_GET['per_page'] ?? 20)));
 
@@ -38,7 +39,13 @@ final class ConsumoController
             $blacklist[$key] = true;
         }
 
-        // 2. Query principal do fluxo analítico
+        // 2. Query principal — filtro de uso dinâmico
+        $havingClause = match ($filtro_uso) {
+            'nao_utilizados' => 'HAVING media_trimestre < 1 OR media_trimestre IS NULL',
+            'todos' => '',
+            default => 'HAVING media_trimestre >= 1', // utilizados (padrão)
+        };
+
         $sql = "
             SELECT 
                 s.cd_material,
@@ -58,7 +65,7 @@ final class ConsumoController
             WHERE cfe.id_especialidade IS NULL
               AND cri.cd_material IS NULL
             GROUP BY s.cd_material, s.cd_fornec_consignado, cad.descricao, f.name, s.saldo
-            HAVING media_trimestre >= 1
+            {$havingClause}
         ";
 
         $stmt = $pdo->query($sql);
@@ -87,43 +94,52 @@ final class ConsumoController
             $desc = (string)$row['descricao'];
             $forn = (string)$row['ds_fornecedor'];
 
-            // Thresholds por faixa de média
-            if ($media <= 3) {
-                // Grupo A — consumo esporádico/baixo: binário (normal ou crítico)
-                // Saldo >= média = NORMAL | Saldo > 0 e < média = ALERTA | Saldo = 0 = CRÍTICO
+            // Status para materiais NÃO UTILIZADOS (sem giro ou sem consumo)
+            if ($media < 1 && $saldo > 0) {
+                // SEM GIRO — estoque parado sem consumo recente
+                $status = 'sem_giro';
+                $status_desc = 'Sem Giro';
+                $threshold_critico = 0;
+                $threshold_warning = 0;
+                $ratio = 999.0; // não prioriza na ordenação
+            } elseif ($media < 1 && $saldo <= 0) {
+                // Sem consumo e sem estoque — inativo
+                $status = 'inativo';
+                $status_desc = 'Inativo';
+                $threshold_critico = 0;
+                $threshold_warning = 0;
+                $ratio = 999.0;
+            } elseif ($media <= 3) {
+                // Grupo A — consumo esporádico/baixo
                 $threshold_critico = 0;
                 $threshold_warning = (float)ceil($media);
-            } else {
-                // Grupo B — consumo regular/alto: margem de 10% para warning
-                $threshold_critico = (float)ceil($media * 0.9);
-                $threshold_warning = (float)ceil($media);
-            }
-
-            $status = 'normal';
-            $status_desc = 'Saudável';
-
-            if ($media <= 3) {
-                // Grupo A: lógica especial
                 if ($saldo <= 0) {
                     $status = 'critico';
                     $status_desc = 'Crítico';
                 } elseif ($saldo < $threshold_warning) {
                     $status = 'alerta';
                     $status_desc = 'Alerta';
+                } else {
+                    $status = 'normal';
+                    $status_desc = 'Saudável';
                 }
+                $ratio = $media > 0 ? ($saldo / $media) : 999.0;
             } else {
-                // Grupo B: lógica padrão
+                // Grupo B — consumo regular/alto
+                $threshold_critico = (float)ceil($media * 0.9);
+                $threshold_warning = (float)ceil($media);
                 if ($saldo <= $threshold_critico) {
                     $status = 'critico';
                     $status_desc = 'Crítico';
                 } elseif ($saldo <= $threshold_warning) {
                     $status = 'alerta';
                     $status_desc = 'Alerta';
+                } else {
+                    $status = 'normal';
+                    $status_desc = 'Saudável';
                 }
+                $ratio = $media > 0 ? ($saldo / $media) : 999.0;
             }
-
-            // Ratio de criticidade para ordenação (menor ratio = mais crítico)
-            $ratio = $media > 0 ? ($saldo / $media) : 999.0;
 
             $processedItems[] = [
                 'codigo' => $codigo,
@@ -160,9 +176,9 @@ final class ConsumoController
         // Ordenação
         usort($processedItems, function ($a, $b) use ($sort) {
             if ($sort === 'status_ratio') {
-                $statusWeights = ['critico' => 1, 'alerta' => 2, 'normal' => 3];
-                $wa = $statusWeights[$a['status']] ?? 3;
-                $wb = $statusWeights[$b['status']] ?? 3;
+                $statusWeights = ['critico' => 1, 'alerta' => 2, 'sem_giro' => 3, 'normal' => 4, 'inativo' => 5];
+                $wa = $statusWeights[$a['status']] ?? 5;
+                $wb = $statusWeights[$b['status']] ?? 5;
                 if ($wa !== $wb) {
                     return $wa <=> $wb;
                 }
@@ -190,6 +206,8 @@ final class ConsumoController
         $criticosCount = count(array_filter($processedItems, fn($i) => $i['status'] === 'critico'));
         $alertasCount = count(array_filter($processedItems, fn($i) => $i['status'] === 'alerta'));
         $saudavelCount = count(array_filter($processedItems, fn($i) => $i['status'] === 'normal'));
+        $semGiroCount = count(array_filter($processedItems, fn($i) => $i['status'] === 'sem_giro'));
+        $inativoCount = count(array_filter($processedItems, fn($i) => $i['status'] === 'inativo'));
 
         // Paginação
         $total = count($processedItems);
@@ -210,12 +228,15 @@ final class ConsumoController
             'busca' => $q,
             'filtro_status' => $status_filtro,
             'filtro_vinculo' => $filtro_vinculo,
+            'filtro_uso' => $filtro_uso,
             'sort' => $sort,
             'pagination' => $pagination,
             'total_count' => $totalItemsCount,
             'critico_count' => $criticosCount,
             'alerta_count' => $alertasCount,
             'saudavel_count' => $saudavelCount,
+            'sem_giro_count' => $semGiroCount,
+            'inativo_count' => $inativoCount,
             'csrf_token' => Csrf::token(),
             'role' => $_SESSION['role'] ?? 'guest'
         ]);
@@ -294,6 +315,7 @@ final class ConsumoController
         $id_fornecedor = (int)($_GET['id_fornecedor'] ?? 0);
         $q = trim((string)($_GET['q'] ?? ''));
         $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos'));
+        $filtro_uso = trim((string)($_GET['uso'] ?? 'utilizados'));
         $sort = trim((string)($_GET['sort'] ?? 'data_desc'));
 
         $pdo = Database::pdo();
@@ -328,7 +350,19 @@ final class ConsumoController
             LEFT JOIN consumo_fornecedor_especialidade cfe ON cfe.cnpj_fornecedor = h.cnpj_fornecedor AND cfe.id_especialidade = 1
             WHERE 1=1
         ";
+
+        // Filtro de uso: utilizados (critico/alerta/normal), nao_utilizados (sem_giro/inativo), todos
         $params = [];
+        $usoWhitelist = match ($filtro_uso) {
+            'nao_utilizados' => ['sem_giro', 'inativo'],
+            'todos' => [],
+            default => ['critico', 'alerta', 'normal'], // utilizados
+        };
+        if (!empty($usoWhitelist)) {
+            $placeholders = implode(',', array_fill(0, count($usoWhitelist), '?'));
+            $sql .= " AND h.status_novo IN ({$placeholders})";
+            $params = array_merge($params, $usoWhitelist);
+        }
 
         if ($data_inicio !== '') {
             $sql .= " AND h.data_transicao >= ?";
@@ -360,6 +394,8 @@ final class ConsumoController
             'material_desc' => 'descricao DESC, h.data_transicao DESC',
             'fornecedor_asc' => 'fornecedor ASC, h.data_transicao DESC',
             'fornecedor_desc' => 'fornecedor DESC, h.data_transicao DESC',
+            'saldo_asc' => 'h.saldo_momento ASC, h.data_transicao DESC',
+            'saldo_desc' => 'h.saldo_momento DESC, h.data_transicao DESC',
             default => 'h.data_transicao DESC',
         };
         $sql .= " ORDER BY {$orderBy}";
@@ -396,6 +432,8 @@ final class ConsumoController
         $total_critico = count(array_filter($historico, fn($r) => $r['status_novo'] === 'critico'));
         $total_alerta = count(array_filter($historico, fn($r) => $r['status_novo'] === 'alerta'));
         $total_normal = count(array_filter($historico, fn($r) => $r['status_novo'] === 'normal'));
+        $total_sem_giro = count(array_filter($historico, fn($r) => $r['status_novo'] === 'sem_giro'));
+        $total_inativo = count(array_filter($historico, fn($r) => $r['status_novo'] === 'inativo'));
 
         // 6. Listas para filtros
         $stmt_especialidades = $pdo->query('SELECT id, nome FROM consumo_especialidades ORDER BY nome');
@@ -410,6 +448,8 @@ final class ConsumoController
             'total_critico' => $total_critico,
             'total_alerta' => $total_alerta,
             'total_normal' => $total_normal,
+            'total_sem_giro' => $total_sem_giro,
+            'total_inativo' => $total_inativo,
             'data_inicio' => $data_inicio,
             'data_fim' => $data_fim,
             'status_filtro' => $status_filtro,
@@ -417,6 +457,7 @@ final class ConsumoController
             'id_fornecedor' => $id_fornecedor,
             'busca' => $q,
             'filtro_vinculo' => $filtro_vinculo,
+            'filtro_uso' => $filtro_uso,
             'sort' => $sort,
             'especialidades' => $especialidades,
             'fornecedores' => $fornecedores,
@@ -444,6 +485,7 @@ final class ConsumoController
         $id_fornecedor = (int)($_GET['id_fornecedor'] ?? 0);
         $q = trim((string)($_GET['q'] ?? ''));
         $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos'));
+        $filtro_uso = trim((string)($_GET['uso'] ?? 'utilizados'));
         $sort = trim((string)($_GET['sort'] ?? 'data_desc'));
 
         $pdo = Database::pdo();
@@ -475,7 +517,19 @@ final class ConsumoController
             LEFT JOIN consumo_fornecedores f ON f.cnpj = h.cnpj_fornecedor
             WHERE 1=1
         ";
+
+        // Filtro de uso no CSV
         $params = [];
+        $usoWhitelist = match ($filtro_uso) {
+            'nao_utilizados' => ['sem_giro', 'inativo'],
+            'todos' => [],
+            default => ['critico', 'alerta', 'normal'],
+        };
+        if (!empty($usoWhitelist)) {
+            $placeholders = implode(',', array_fill(0, count($usoWhitelist), '?'));
+            $sql .= " AND h.status_novo IN ({$placeholders})";
+            $params = array_merge($params, $usoWhitelist);
+        }
 
         if ($data_inicio !== '') {
             $sql .= " AND h.data_transicao >= ?";
@@ -506,6 +560,8 @@ final class ConsumoController
             'material_desc' => 'descricao DESC, h.data_transicao DESC',
             'fornecedor_asc' => 'fornecedor ASC, h.data_transicao DESC',
             'fornecedor_desc' => 'fornecedor DESC, h.data_transicao DESC',
+            'saldo_asc' => 'h.saldo_momento ASC, h.data_transicao DESC',
+            'saldo_desc' => 'h.saldo_momento DESC, h.data_transicao DESC',
             default => 'h.data_transicao DESC',
         };
         $sql .= " ORDER BY {$orderBy}";
@@ -557,7 +613,7 @@ final class ConsumoController
                     $row['cnpj_fornecedor'],
                     $row['fornecedor'],
                     $row['status_anterior'] ?? '— Primeiro registro',
-                    $row['status_novo'],
+                    $row['status_novo'] === 'sem_giro' ? 'Sem Giro' : ($row['status_novo'] === 'inativo' ? 'Inativo' : $row['status_novo']),
                     $row['saldo_momento'],
                     $row['media_momento'],
                     $row['data_transicao']
@@ -626,6 +682,7 @@ final class ConsumoController
         $status_filtro = trim((string)($_GET['status'] ?? ''));
         $q = trim((string)($_GET['q'] ?? ''));
         $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos'));
+        $sort = trim((string)($_GET['sort'] ?? 'data_desc'));
 
         $pdo = Database::pdo();
 
@@ -671,7 +728,21 @@ final class ConsumoController
             $params[] = $status_filtro;
         }
 
-        $sql .= " ORDER BY sn.data_snapshot DESC, sn.cd_material ASC";
+        $orderBy = match ($sort) {
+            'data_asc' => 'sn.data_snapshot ASC, sn.cd_material ASC',
+            'codigo_asc' => 'sn.cd_material ASC, sn.data_snapshot DESC',
+            'codigo_desc' => 'sn.cd_material DESC, sn.data_snapshot DESC',
+            'material_asc' => 'descricao ASC, sn.data_snapshot DESC',
+            'material_desc' => 'descricao DESC, sn.data_snapshot DESC',
+            'fornecedor_asc' => 'fornecedor ASC, sn.data_snapshot DESC',
+            'fornecedor_desc' => 'fornecedor DESC, sn.data_snapshot DESC',
+            'saldo_asc' => 'sn.saldo ASC, sn.data_snapshot DESC',
+            'saldo_desc' => 'sn.saldo DESC, sn.data_snapshot DESC',
+            'media_asc' => 'sn.media_trimestre ASC, sn.data_snapshot DESC',
+            'media_desc' => 'sn.media_trimestre DESC, sn.data_snapshot DESC',
+            default => 'sn.data_snapshot DESC, sn.cd_material ASC',
+        };
+        $sql .= " ORDER BY {$orderBy}";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -729,6 +800,7 @@ final class ConsumoController
             'status_filtro' => $status_filtro,
             'busca' => $q,
             'filtro_vinculo' => $filtro_vinculo,
+            'sort' => $sort,
             'fornecedores' => $fornecedores,
             'csrf_token' => Csrf::token(),
             'role' => $_SESSION['role'] ?? 'guest'
@@ -747,6 +819,7 @@ final class ConsumoController
         $status_filtro = trim((string)($_GET['status'] ?? ''));
         $q = trim((string)($_GET['q'] ?? ''));
         $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos'));
+        $sort = trim((string)($_GET['sort'] ?? 'data_desc'));
 
         $pdo = Database::pdo();
 
@@ -791,7 +864,21 @@ final class ConsumoController
             $params[] = $status_filtro;
         }
 
-        $sql .= " ORDER BY sn.data_snapshot DESC, sn.cd_material ASC";
+        $orderBy = match ($sort) {
+            'data_asc' => 'sn.data_snapshot ASC, sn.cd_material ASC',
+            'codigo_asc' => 'sn.cd_material ASC, sn.data_snapshot DESC',
+            'codigo_desc' => 'sn.cd_material DESC, sn.data_snapshot DESC',
+            'material_asc' => 'descricao ASC, sn.data_snapshot DESC',
+            'material_desc' => 'descricao DESC, sn.data_snapshot DESC',
+            'fornecedor_asc' => 'fornecedor ASC, sn.data_snapshot DESC',
+            'fornecedor_desc' => 'fornecedor DESC, sn.data_snapshot DESC',
+            'saldo_asc' => 'sn.saldo ASC, sn.data_snapshot DESC',
+            'saldo_desc' => 'sn.saldo DESC, sn.data_snapshot DESC',
+            'media_asc' => 'sn.media_trimestre ASC, sn.data_snapshot DESC',
+            'media_desc' => 'sn.media_trimestre DESC, sn.data_snapshot DESC',
+            default => 'sn.data_snapshot DESC, sn.cd_material ASC',
+        };
+        $sql .= " ORDER BY {$orderBy}";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);

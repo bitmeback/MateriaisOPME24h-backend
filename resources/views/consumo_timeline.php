@@ -11,6 +11,7 @@ use MateriaisOpme\App\Support\Cnpj;
 /** @var string $status_filtro */
 /** @var string $busca */
 /** @var string $filtro_vinculo */
+/** @var string $sort */
 /** @var array $fornecedores */
 /** @var string $csrf_token */
 /** @var string $role */
@@ -21,6 +22,7 @@ $data_fim = $data_fim ?? '';
 $status_filtro = $status_filtro ?? '';
 $busca = $busca ?? '';
 $filtro_vinculo = $filtro_vinculo ?? 'ativos';
+$sort = $sort ?? 'data_desc';
 $snapshots = $snapshots ?? [];
 $stats_por_dia = $stats_por_dia ?? [];
 $dias_disponiveis = $dias_disponiveis ?? [];
@@ -111,7 +113,7 @@ ob_start();
       <p class="muted">Estado de cada material registrado nos dias monitorados.</p>
     </div>
     <div>
-      <a class="btn btn-pending" href="/api/consumo/timeline-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&q=<?= urlencode($busca) ?>&vinculo=<?= urlencode($filtro_vinculo) ?>">
+      <a class="btn btn-pending" href="/api/consumo/timeline-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&q=<?= urlencode($busca) ?>&vinculo=<?= urlencode($filtro_vinculo) ?>&sort=<?= urlencode($sort) ?>">
         📥 Exportar CSV (Excel BR)
       </a>
     </div>
@@ -135,9 +137,24 @@ ob_start();
       <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>🟢 Normal</option>
     </select>
 
+    <select name="sort">
+      <option value="data_desc" <?= $sort === 'data_desc' ? 'selected' : '' ?>>Data (Mais recente)</option>
+      <option value="data_asc" <?= $sort === 'data_asc' ? 'selected' : '' ?>>Data (Mais antiga)</option>
+      <option value="codigo_asc" <?= $sort === 'codigo_asc' ? 'selected' : '' ?>>Código (Crescente)</option>
+      <option value="codigo_desc" <?= $sort === 'codigo_desc' ? 'selected' : '' ?>>Código (Decrescente)</option>
+      <option value="material_asc" <?= $sort === 'material_asc' ? 'selected' : '' ?>>Material (A→Z)</option>
+      <option value="material_desc" <?= $sort === 'material_desc' ? 'selected' : '' ?>>Material (Z→A)</option>
+      <option value="fornecedor_asc" <?= $sort === 'fornecedor_asc' ? 'selected' : '' ?>>Fornecedor (A→Z)</option>
+      <option value="fornecedor_desc" <?= $sort === 'fornecedor_desc' ? 'selected' : '' ?>>Fornecedor (Z→A)</option>
+      <option value="saldo_asc" <?= $sort === 'saldo_asc' ? 'selected' : '' ?>>Saldo (Menor primeiro)</option>
+      <option value="saldo_desc" <?= $sort === 'saldo_desc' ? 'selected' : '' ?>>Saldo (Maior primeiro)</option>
+      <option value="media_asc" <?= $sort === 'media_asc' ? 'selected' : '' ?>>Média (Menor primeiro)</option>
+      <option value="media_desc" <?= $sort === 'media_desc' ? 'selected' : '' ?>>Média (Maior primeiro)</option>
+    </select>
+
     <button type="submit" class="btn">Filtrar</button>
 
-    <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $busca !== '' || $filtro_vinculo !== 'ativos'): ?>
+    <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $busca !== '' || $filtro_vinculo !== 'ativos' || $sort !== 'data_desc'): ?>
       <a class="btn btn-secondary" href="/consumo/timeline">Limpar</a>
     <?php endif; ?>
   </form>

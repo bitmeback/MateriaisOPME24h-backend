@@ -6,6 +6,8 @@ ob_start();
 /** @var int $total_critico */
 /** @var int $total_alerta */
 /** @var int $total_normal */
+/** @var int $total_sem_giro */
+/** @var int $total_inativo */
 /** @var string $data_inicio */
 /** @var string $data_fim */
 /** @var string $status_filtro */
@@ -13,6 +15,7 @@ ob_start();
 /** @var int $id_fornecedor */
 /** @var string $busca */
 /** @var string $filtro_vinculo */
+/** @var string $filtro_uso */
 /** @var string $sort */
 /** @var array $especialidades */
 /** @var array $fornecedores */
@@ -48,8 +51,22 @@ ob_start();
   <div class="dashboard-card" style="flex:1; min-width:180px; border-left: 4px solid #10b981; padding: 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px;">
     <span style="font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase;">Normal</span>
     <h2 style="margin:8px 0 0; font-size:28px; color:#10b981;"><?= $total_normal ?></h2>
-    <p class="muted" style="margin:4px 0 0; font-size:12px;">Mudanças para status normal</p>
+    <p class="muted" style="margin:4px 0 0; font-size:12px;">Mudan&#231;as para status normal</p>
   </div>
+  <?php if ($total_sem_giro > 0): ?>
+  <div class="dashboard-card" style="flex:1; min-width:180px; border-left: 4px solid #8b5cf6; padding: 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px;">
+    <span style="font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase;">Sem Giro</span>
+    <h2 style="margin:8px 0 0; font-size:28px; color:#8b5cf6;"><?= $total_sem_giro ?></h2>
+    <p class="muted" style="margin:4px 0 0; font-size:12px;">Estoque parado sem consumo</p>
+  </div>
+  <?php endif; ?>
+  <?php if ($total_inativo > 0): ?>
+  <div class="dashboard-card" style="flex:1; min-width:180px; border-left: 4px solid #9ca3af; padding: 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px;">
+    <span style="font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase;">Inativo</span>
+    <h2 style="margin:8px 0 0; font-size:28px; color:#9ca3af;"><?= $total_inativo ?></h2>
+    <p class="muted" style="margin:4px 0 0; font-size:12px;">Sem estoque e sem consumo</p>
+  </div>
+  <?php endif; ?>
 </div>
 
 <!-- Filtros -->
@@ -60,7 +77,7 @@ ob_start();
       <p class="muted">Listagem das últimas mudanças de status detectadas (Ruptura, Prevenção e Estabilidade).</p>
     </div>
     <div>
-      <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>&q=<?= urlencode($busca) ?>&vinculo=<?= urlencode($filtro_vinculo) ?>&sort=<?= urlencode($sort) ?>">
+      <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>&q=<?= urlencode($busca) ?>&vinculo=<?= urlencode($filtro_vinculo) ?>&uso=<?= urlencode($filtro_uso) ?>&sort=<?= urlencode($sort) ?>">
         📥 Exportar CSV (Excel BR)
       </a>
     </div>
@@ -69,8 +86,14 @@ ob_start();
   <form method="get" action="/consumo/relatorios" class="search-bar">
     <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>" title="Data Início">
     <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>" title="Data Fim">
-    <input type="text" name="q" value="<?= htmlspecialchars($busca, ENT_QUOTES, 'UTF-8') ?>" placeholder="Buscar por material, código ou fornecedor" style="flex:1;">
+    <input type="text" name="q" value="<?= htmlspecialchars($busca, ENT_QUOTES, 'UTF-8') ?>" placeholder="Buscar por material, c&#243;digo ou fornecedor" style="flex:1;">
     
+    <select name="uso">
+      <option value="utilizados" <?= $filtro_uso === 'utilizados' ? 'selected' : '' ?>>&#9889; Utilizados</option>
+      <option value="nao_utilizados" <?= $filtro_uso === 'nao_utilizados' ? 'selected' : '' ?>>&#128196; N&#227;o Utilizados</option>
+      <option value="todos" <?= $filtro_uso === 'todos' ? 'selected' : '' ?>>&#128193; Todos</option>
+    </select>
+
     <select name="vinculo">
       <option value="ativos" <?= $filtro_vinculo === 'ativos' ? 'selected' : '' ?>>🔗 Vínculos Ativos</option>
       <option value="inativos" <?= $filtro_vinculo === 'inativos' ? 'selected' : '' ?>>🚫 Vínculos Inativos</option>
@@ -82,6 +105,8 @@ ob_start();
       <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico</option>
       <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>🟠 Alerta</option>
       <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>🟢 Saudável</option>
+      <option value="sem_giro" <?= $status_filtro === 'sem_giro' ? 'selected' : '' ?>>🟣 Sem Giro</option>
+      <option value="inativo" <?= $status_filtro === 'inativo' ? 'selected' : '' ?>>⚪ Inativo</option>
     </select>
 
     <select name="id_especialidade">
@@ -107,11 +132,13 @@ ob_start();
       <option value="material_desc" <?= $sort === 'material_desc' ? 'selected' : '' ?>>Material (Z→A)</option>
       <option value="fornecedor_asc" <?= $sort === 'fornecedor_asc' ? 'selected' : '' ?>>Fornecedor (A→Z)</option>
       <option value="fornecedor_desc" <?= $sort === 'fornecedor_desc' ? 'selected' : '' ?>>Fornecedor (Z→A)</option>
+      <option value="saldo_asc" <?= $sort === 'saldo_asc' ? 'selected' : '' ?>>Saldo (Menor primeiro)</option>
+      <option value="saldo_desc" <?= $sort === 'saldo_desc' ? 'selected' : '' ?>>Saldo (Maior primeiro)</option>
     </select>
 
     <button type="submit" class="btn">Filtrar</button>
     
-    <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $id_especialidade !== 0 || $id_fornecedor !== 0 || $busca !== '' || $filtro_vinculo !== 'ativos' || $sort !== 'data_desc'): ?>
+    <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $id_especialidade !== 0 || $id_fornecedor !== 0 || $busca !== '' || $filtro_vinculo !== 'ativos' || $filtro_uso !== 'utilizados' || $sort !== 'data_desc'): ?>
       <a class="btn btn-secondary" href="/consumo/relatorios">Limpar</a>
     <?php endif; ?>
   </form>
@@ -159,6 +186,10 @@ ob_start();
                 <span class="status-tag" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🔴 CRÍTICO</span>
               <?php elseif ($row['status_anterior'] === 'alerta'): ?>
                 <span class="status-tag" style="background:#fef3c7;color:#f59e0b;border:1px solid #fcd34d;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟠 ALERTA</span>
+              <?php elseif ($row['status_anterior'] === 'sem_giro'): ?>
+                <span class="status-tag" style="background:#f3e8ff;color:#8b5cf6;border:1px solid #c4b5fd;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟣 SEM GIRO</span>
+              <?php elseif ($row['status_anterior'] === 'inativo'): ?>
+                <span class="status-tag" style="background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">⚪ INATIVO</span>
               <?php else: ?>
                 <span class="status-tag" style="background:#ecfdf5;color:#10b981;border:1px solid #a7f3d0;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟢 NORMAL</span>
               <?php endif; ?>
@@ -168,6 +199,10 @@ ob_start();
                 <span class="status-tag" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🔴 CRÍTICO</span>
               <?php elseif ($row['status_novo'] === 'alerta'): ?>
                 <span class="status-tag" style="background:#fef3c7;color:#f59e0b;border:1px solid #fcd34d;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟠 ALERTA</span>
+              <?php elseif ($row['status_novo'] === 'sem_giro'): ?>
+                <span class="status-tag" style="background:#f3e8ff;color:#8b5cf6;border:1px solid #c4b5fd;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟣 SEM GIRO</span>
+              <?php elseif ($row['status_novo'] === 'inativo'): ?>
+                <span class="status-tag" style="background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">⚪ INATIVO</span>
               <?php else: ?>
                 <span class="status-tag" style="background:#ecfdf5;color:#10b981;border:1px solid #a7f3d0;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟢 NORMAL</span>
               <?php endif; ?>
