@@ -60,6 +60,12 @@ ob_start();
         <span style="font-size:11px; color:#10b981; font-weight:700;">🟢 <?= $stats['normal'] ?></span>
       </div>
       <div>
+        <span style="font-size:11px; color:#8b5cf6; font-weight:700;">🟣 <?= ($stats['sem_giro'] ?? 0) ?></span>
+      </div>
+      <div>
+        <span style="font-size:11px; color:#9ca3af; font-weight:700;">⚪ <?= ($stats['inativo'] ?? 0) ?></span>
+      </div>
+      <div>
         <span style="font-size:11px; color:#6b7280; font-weight:600;">Total: <?= $stats['total'] ?></span>
       </div>
     </div>
@@ -84,6 +90,8 @@ ob_start();
         $pct_critico = round(($stats['critico'] / $total) * 100, 1);
         $pct_alerta = round(($stats['alerta'] / $total) * 100, 1);
         $pct_normal = round(($stats['normal'] / $total) * 100, 1);
+        $pct_sem_giro = round((($stats['sem_giro'] ?? 0) / $total) * 100, 1);
+        $pct_inativo = round((($stats['inativo'] ?? 0) / $total) * 100, 1);
       ?>
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
         <span style="font-size:12px; font-weight:600; color:#374151; min-width:80px;"><?= date('d/m/Y', strtotime($dia)) ?></span>
@@ -96,6 +104,12 @@ ob_start();
           <?php endif; ?>
           <?php if ($stats['normal'] > 0): ?>
           <div style="width:<?= $pct_normal ?>%; background:#10b981; min-width:2px;" title="<?= $stats['normal'] ?> normais"></div>
+          <?php endif; ?>
+          <?php if (($stats['sem_giro'] ?? 0) > 0): ?>
+          <div style="width:<?= $pct_sem_giro ?>%; background:#8b5cf6; min-width:2px;" title="<?= $stats['sem_giro'] ?> sem giro"></div>
+          <?php endif; ?>
+          <?php if (($stats['inativo'] ?? 0) > 0): ?>
+          <div style="width:<?= $pct_inativo ?>%; background:#9ca3af; min-width:2px;" title="<?= $stats['inativo'] ?> inativos"></div>
           <?php endif; ?>
         </div>
         <span style="font-size:11px; color:#6b7280; min-width:40px; text-align:right;"><?= $stats['total'] ?></span>
@@ -135,6 +149,8 @@ ob_start();
       <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico</option>
       <option value="alerta" <?= $status_filtro === 'alerta' ? 'selected' : '' ?>>🟠 Alerta</option>
       <option value="normal" <?= $status_filtro === 'normal' ? 'selected' : '' ?>>🟢 Normal</option>
+      <option value="sem_giro" <?= $status_filtro === 'sem_giro' ? 'selected' : '' ?>>🟣 Sem Giro</option>
+      <option value="inativo" <?= $status_filtro === 'inativo' ? 'selected' : '' ?>>⚪ Inativo</option>
     </select>
 
     <select name="sort">
@@ -199,6 +215,10 @@ ob_start();
                 <span class="status-tag" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🔴 CRÍTICO</span>
               <?php elseif ($row['status'] === 'alerta'): ?>
                 <span class="status-tag" style="background:#fef3c7;color:#f59e0b;border:1px solid #fcd34d;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟠 ALERTA</span>
+              <?php elseif ($row['status'] === 'sem_giro'): ?>
+                <span class="status-tag" style="background:#f5f3ff;color:#8b5cf6;border:1px solid #c4b5fd;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟣 SEM GIRO</span>
+              <?php elseif ($row['status'] === 'inativo'): ?>
+                <span class="status-tag" style="background:#f9fafb;color:#9ca3af;border:1px solid #d1d5db;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">⚪ INATIVO</span>
               <?php else: ?>
                 <span class="status-tag" style="background:#ecfdf5;color:#10b981;border:1px solid #a7f3d0;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟢 NORMAL</span>
               <?php endif; ?>

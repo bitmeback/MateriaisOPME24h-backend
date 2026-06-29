@@ -776,7 +776,7 @@ final class ConsumoController
         foreach ($snapshots as $row) {
             $dia = $row['data_snapshot'];
             if (!isset($stats_por_dia[$dia])) {
-                $stats_por_dia[$dia] = ['total' => 0, 'critico' => 0, 'alerta' => 0, 'normal' => 0];
+                $stats_por_dia[$dia] = ['total' => 0, 'critico' => 0, 'alerta' => 0, 'normal' => 0, 'sem_giro' => 0, 'inativo' => 0];
             }
             $stats_por_dia[$dia]['total']++;
             $stats_por_dia[$dia][$row['status']]++;
@@ -921,13 +921,21 @@ final class ConsumoController
                 if ($filtro_vinculo === 'inativos' && $ativo) continue;
             }
 
+            $statusLabel = match ($row['status']) {
+                'critico' => 'Crítico',
+                'alerta' => 'Alerta',
+                'normal' => 'Normal',
+                'sem_giro' => 'Sem Giro',
+                'inativo' => 'Inativo',
+                default => $row['status'],
+            };
             fputcsv($output, [
                 $row['data_snapshot'],
                 $row['cd_material'],
                 $row['descricao'],
                 $row['cnpj_fornecedor'],
                 $row['fornecedor'],
-                $row['status'],
+                $statusLabel,
                 number_format((float)$row['saldo'], 1, ',', '.'),
                 number_format((float)$row['media_trimestre'], 1, ',', '.')
             ], ';');
