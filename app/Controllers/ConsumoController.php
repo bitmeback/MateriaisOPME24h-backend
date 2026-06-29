@@ -46,13 +46,13 @@ final class ConsumoController
                 COALESCE(f.name, 'Não identificado') AS ds_fornecedor,
                 s.saldo,
                 COALESCE(c.descricao, 'Material Desconhecido') AS descricao,
-                CEIL(SUM(c.consumo) / 3) AS media_trimestre
+                ROUND(SUM(c.consumo) / COUNT(DISTINCT c.mes), 1) AS media_trimestre
             FROM saldo_estoque_atual s
             LEFT JOIN consumo_materiais c ON s.cd_material = c.codigo
             LEFT JOIN consumo_fornecedores f ON f.cnpj = s.cd_fornec_consignado
             LEFT JOIN consumo_fornecedor_especialidade cfe ON cfe.cnpj_fornecedor = s.cd_fornec_consignado AND cfe.id_especialidade = 1
-            WHERE c.ano = 2025 
-              AND c.mes >= 3
+            WHERE c.ano = YEAR(CURDATE()) 
+              AND c.mes >= MONTH(CURDATE()) - 3
               AND cfe.id_especialidade IS NULL
             GROUP BY s.cd_material, s.cd_fornec_consignado, c.descricao, f.name, s.saldo
             HAVING media_trimestre > 1
@@ -268,6 +268,9 @@ final class ConsumoController
         $status_filtro = trim((string)($_GET['status'] ?? ''));
         $id_especialidade = (int)($_GET['id_especialidade'] ?? 0);
         $id_fornecedor = (int)($_GET['id_fornecedor'] ?? 0);
+        $q = trim((string)($_GET['q'] ?? ''));
+        $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos'));
+        $sort = trim((string)($_GET['sort'] ?? 'data_desc'));
 
         $pdo = Database::pdo();
 
@@ -284,7 +287,7 @@ final class ConsumoController
             SELECT 
                 h.cd_material,
                 h.cnpj_fornecedor,
-                COALESCE(c.descricao, 'Material Desconhecido') AS descricao,
+                COALESCE(c_desc.descricao, 'Material Desconhecido') AS descricao,
                 COALESCE(f.name, 'Não identificado') AS fornecedor,
                 h.status_anterior,
                 h.status_novo,
@@ -293,7 +296,12 @@ final class ConsumoController
                 DATE_FORMAT(h.data_transicao, '%d/%m/%Y %H:%i') AS data_formatada,
                 h.data_transicao
             FROM consumo_status_historico h
-            LEFT JOIN consumo_materiais c ON h.cd_material = c.codigo
+            LEFT JOIN (
+                SELECT codigo, descricao 
+                FROM consumo_materiais c1 
+                WHERE data_importacao = (SELECT MAX(data_importacao) FROM consumo_materiais c2 WHERE c2.codigo = c1.codigo)
+                GROUP BY codigo
+            ) c_desc ON h.cd_material = c_desc.codigo
             LEFT JOIN consumo_fornecedores f ON f.cnpj = h.cnpj_fornecedor
             LEFT JOIN consumo_fornecedor_especialidade cfe ON cfe.cnpj_fornecedor = h.cnpj_fornecedor AND cfe.id_especialidade = 1
             WHERE 1=1
@@ -321,19 +329,53 @@ final class ConsumoController
             $params[] = $id_especialidade;
         }
 
-        $sql .= " ORDER BY h.data_transicao DESC";
+        // Ordenação
+        $orderBy = match ($sort) {
+            'data_asc' => 'h.data_transicao ASC',
+            'codigo_asc' => 'h.cd_material ASC, h.data_transicao DESC',
+            'codigo_desc' => 'h.cd_material DESC, h.data_transicao DESC',
+            'material_asc' => 'descricao ASC, h.data_transicao DESC',
+            'material_desc' => 'descricao DESC, h.data_transicao DESC',
+            'fornecedor_asc' => 'fornecedor ASC, h.data_transicao DESC',
+            'fornecedor_desc' => 'fornecedor DESC, h.data_transicao DESC',
+            default => 'h.data_transicao DESC',
+        };
+        $sql .= " ORDER BY {$orderBy}";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $historico = $stmt->fetchAll();
 
-        // 3. Estatísticas resumidas
+        // 3. Filtro por busca textual (código, descrição ou fornecedor)
+        if ($q !== '') {
+            $qLower = mb_strtolower($q);
+            $historico = array_filter($historico, function ($row) use ($qLower) {
+                return stripos((string)$row['cd_material'], $qLower) !== false
+                    || stripos($row['descricao'], $qLower) !== false
+                    || stripos($row['fornecedor'], $qLower) !== false;
+            });
+            $historico = array_values($historico);
+        }
+
+        // 4. Filtro de vínculos (ativos/inativos/todos)
+        if ($filtro_vinculo !== 'todos') {
+            $historico = array_filter($historico, function ($row) use ($blacklist, $filtro_vinculo) {
+                $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+                $ativo = !isset($blacklist[$key]);
+                if ($filtro_vinculo === 'ativos') return $ativo;
+                if ($filtro_vinculo === 'inativos') return !$ativo;
+                return true;
+            });
+            $historico = array_values($historico);
+        }
+
+        // 5. Estatísticas resumidas
         $total_transicoes = count($historico);
         $total_critico = count(array_filter($historico, fn($r) => $r['status_novo'] === 'critico'));
         $total_alerta = count(array_filter($historico, fn($r) => $r['status_novo'] === 'alerta'));
         $total_normal = count(array_filter($historico, fn($r) => $r['status_novo'] === 'normal'));
 
-        // 4. Listas para filtros
+        // 6. Listas para filtros
         $stmt_especialidades = $pdo->query('SELECT id, nome FROM consumo_especialidades ORDER BY nome');
         $especialidades = $stmt_especialidades->fetchAll();
 
@@ -351,6 +393,9 @@ final class ConsumoController
             'status_filtro' => $status_filtro,
             'id_especialidade' => $id_especialidade,
             'id_fornecedor' => $id_fornecedor,
+            'busca' => $q,
+            'filtro_vinculo' => $filtro_vinculo,
+            'sort' => $sort,
             'especialidades' => $especialidades,
             'fornecedores' => $fornecedores,
             'csrf_token' => Csrf::token(),
@@ -370,18 +415,29 @@ final class ConsumoController
         header('Pragma: no-cache');
         header('Expires: 0');
 
-        $data_inicio = trim((string)($_GET['data_inixo'] ?? $_GET['data_inicio'] ?? ''));
+        $data_inicio = trim((string)($_GET['data_inicio'] ?? ''));
         $data_fim = trim((string)($_GET['data_fim'] ?? ''));
         $status_filtro = trim((string)($_GET['status'] ?? ''));
         $id_especialidade = (int)($_GET['id_especialidade'] ?? 0);
         $id_fornecedor = (int)($_GET['id_fornecedor'] ?? 0);
+        $q = trim((string)($_GET['q'] ?? ''));
+        $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos'));
+        $sort = trim((string)($_GET['sort'] ?? 'data_desc'));
 
         $pdo = Database::pdo();
+
+        // Blacklist de vínculos inativos
+        $stmtInativas = $pdo->query('SELECT cd_material, cnpj_fornecedor FROM consumo_relacoes_inativas');
+        $blacklist = [];
+        while ($row = $stmtInativas->fetch()) {
+            $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+            $blacklist[$key] = true;
+        }
 
         $sql = "
             SELECT 
                 h.cd_material,
-                COALESCE(c.descricao, 'Material Desconhecido') AS descricao,
+                COALESCE(c_desc.descricao, 'Material Desconhecido') AS descricao,
                 h.cnpj_fornecedor,
                 COALESCE(f.name, 'Não identificado') AS fornecedor,
                 h.status_anterior,
@@ -390,7 +446,12 @@ final class ConsumoController
                 h.media_momento,
                 DATE_FORMAT(h.data_transicao, '%d/%m/%Y %H:%i') AS data_transicao
             FROM consumo_status_historico h
-            LEFT JOIN consumo_materiais c ON h.cd_material = c.codigo
+            LEFT JOIN (
+                SELECT codigo, descricao 
+                FROM consumo_materiais c1 
+                WHERE data_importacao = (SELECT MAX(data_importacao) FROM consumo_materiais c2 WHERE c2.codigo = c1.codigo)
+                GROUP BY codigo
+            ) c_desc ON h.cd_material = c_desc.codigo
             LEFT JOIN consumo_fornecedores f ON f.cnpj = h.cnpj_fornecedor
             WHERE 1=1
         ";
@@ -417,7 +478,17 @@ final class ConsumoController
             $params[] = $id_especialidade;
         }
 
-        $sql .= " ORDER BY h.data_transicao DESC";
+        $orderBy = match ($sort) {
+            'data_asc' => 'h.data_transicao ASC',
+            'codigo_asc' => 'h.cd_material ASC, h.data_transicao DESC',
+            'codigo_desc' => 'h.cd_material DESC, h.data_transicao DESC',
+            'material_asc' => 'descricao ASC, h.data_transicao DESC',
+            'material_desc' => 'descricao DESC, h.data_transicao DESC',
+            'fornecedor_asc' => 'fornecedor ASC, h.data_transicao DESC',
+            'fornecedor_desc' => 'fornecedor DESC, h.data_transicao DESC',
+            default => 'h.data_transicao DESC',
+        };
+        $sql .= " ORDER BY {$orderBy}";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -441,19 +512,36 @@ final class ConsumoController
             'Data_Transacao'
         ], ';');
 
-        // Dados
+        // Dados com filtros de busca e vínculo aplicados
         while ($row = $stmt->fetch()) {
-            fputcsv($output, [
-                $row['cd_material'],
-                $row['descricao'],
-                $row['cnpj_fornecedor'],
-                $row['fornecedor'],
-                $row['status_anterior'],
-                $row['status_novo'],
-                $row['saldo_momento'],
-                $row['media_momento'],
-                $row['data_transicao']
-            ], ';');
+            // Filtro de busca textual
+            if ($q !== '') {
+                $qLower = mb_strtolower($q);
+                if (stripos((string)$row['cd_material'], $qLower) === false
+                    && stripos($row['descricao'], $qLower) === false
+                    && stripos($row['fornecedor'], $qLower) === false) {
+                    continue;
+                }
+            }
+            // Filtro de vínculos
+            if ($filtro_vinculo !== 'todos') {
+                $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+                $ativo = !isset($blacklist[$key]);
+                if ($filtro_vinculo === 'ativos' && !$ativo) continue;
+                if ($filtro_vinculo === 'inativos' && $ativo) continue;
+            }
+
+                fputcsv($output, [
+                    $row['cd_material'],
+                    $row['descricao'],
+                    $row['cnpj_fornecedor'],
+                    $row['fornecedor'],
+                    $row['status_anterior'] ?? '— Primeiro registro',
+                    $row['status_novo'],
+                    $row['saldo_momento'],
+                    $row['media_momento'],
+                    $row['data_transicao']
+                ], ';');
         }
 
         fclose($output);

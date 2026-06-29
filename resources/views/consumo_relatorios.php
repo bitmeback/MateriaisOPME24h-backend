@@ -11,6 +11,9 @@ ob_start();
 /** @var string $status_filtro */
 /** @var int $id_especialidade */
 /** @var int $id_fornecedor */
+/** @var string $busca */
+/** @var string $filtro_vinculo */
+/** @var string $sort */
 /** @var array $especialidades */
 /** @var array $fornecedores */
 /** @var string $csrf_token */
@@ -20,7 +23,7 @@ ob_start();
 
 <div class="nav nav-top">
   <a class="btn" href="/especialidades">Especialidades</a>
-  <a class="btn" href="/consumo" style="background:#3b82f6; color:#fff;">Monitoramento</a>
+  <a class="btn" href="/consumo" style="background:#3b82f6; color:#fff;">Consumo</a>
   <a class="btn btn-secondary" href="/dashboard">Voltar ao painel</a>
 </div>
 
@@ -56,7 +59,7 @@ ob_start();
       <p class="muted">Listagem das últimas mudanças de status detectadas (Ruptura, Prevenção e Estabilidade).</p>
     </div>
     <div>
-      <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>">
+      <a class="btn btn-pending" href="/api/consumo/export-csv?data_inicio=<?= urlencode($data_inicio) ?>&data_fim=<?= urlencode($data_fim) ?>&status=<?= urlencode($status_filtro) ?>&id_especialidade=<?= $id_especialidade ?>&id_fornecedor=<?= $id_fornecedor ?>&q=<?= urlencode($busca) ?>&vinculo=<?= urlencode($filtro_vinculo) ?>&sort=<?= urlencode($sort) ?>">
         📥 Exportar CSV (Excel BR)
       </a>
     </div>
@@ -65,7 +68,14 @@ ob_start();
   <form method="get" action="/consumo/relatorios" class="search-bar">
     <input type="date" name="data_inicio" value="<?= htmlspecialchars($data_inicio, ENT_QUOTES, 'UTF-8') ?>" title="Data Início">
     <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim, ENT_QUOTES, 'UTF-8') ?>" title="Data Fim">
+    <input type="text" name="q" value="<?= htmlspecialchars($busca, ENT_QUOTES, 'UTF-8') ?>" placeholder="Buscar por material, código ou fornecedor" style="flex:1;">
     
+    <select name="vinculo">
+      <option value="ativos" <?= $filtro_vinculo === 'ativos' ? 'selected' : '' ?>>🔗 Vínculos Ativos</option>
+      <option value="inativos" <?= $filtro_vinculo === 'inativos' ? 'selected' : '' ?>>🚫 Vínculos Inativos</option>
+      <option value="todos" <?= $filtro_vinculo === 'todos' ? 'selected' : '' ?>>📁 Todos os Vínculos</option>
+    </select>
+
     <select name="status">
       <option value="">Todos os status</option>
       <option value="critico" <?= $status_filtro === 'critico' ? 'selected' : '' ?>>🔴 Crítico</option>
@@ -87,9 +97,20 @@ ob_start();
       <?php endforeach; ?>
     </select>
 
+    <select name="sort">
+      <option value="data_desc" <?= $sort === 'data_desc' ? 'selected' : '' ?>>Data (Mais recente)</option>
+      <option value="data_asc" <?= $sort === 'data_asc' ? 'selected' : '' ?>>Data (Mais antiga)</option>
+      <option value="codigo_asc" <?= $sort === 'codigo_asc' ? 'selected' : '' ?>>Código (Crescente)</option>
+      <option value="codigo_desc" <?= $sort === 'codigo_desc' ? 'selected' : '' ?>>Código (Decrescente)</option>
+      <option value="material_asc" <?= $sort === 'material_asc' ? 'selected' : '' ?>>Material (A→Z)</option>
+      <option value="material_desc" <?= $sort === 'material_desc' ? 'selected' : '' ?>>Material (Z→A)</option>
+      <option value="fornecedor_asc" <?= $sort === 'fornecedor_asc' ? 'selected' : '' ?>>Fornecedor (A→Z)</option>
+      <option value="fornecedor_desc" <?= $sort === 'fornecedor_desc' ? 'selected' : '' ?>>Fornecedor (Z→A)</option>
+    </select>
+
     <button type="submit" class="btn">Filtrar</button>
     
-    <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $id_especialidade !== 0 || $id_fornecedor !== 0): ?>
+    <?php if ($data_inicio !== '' || $data_fim !== '' || $status_filtro !== '' || $id_especialidade !== 0 || $id_fornecedor !== 0 || $busca !== '' || $filtro_vinculo !== 'ativos' || $sort !== 'data_desc'): ?>
       <a class="btn btn-secondary" href="/consumo/relatorios">Limpar</a>
     <?php endif; ?>
   </form>
@@ -124,14 +145,16 @@ ob_start();
       <tbody>
         <?php foreach ($historico as $row): ?>
           <tr class="row-hover">
-            <td style="text-align:center;"><strong><?= htmlspecialchars($row['cd_material']) ?></strong></td>
+            <td style="text-align:center;"><strong><?= htmlspecialchars((string)$row['cd_material']) ?></strong></td>
             <td><?= htmlspecialchars($row['descricao']) ?></td>
             <td>
               <div style="font-weight:500; font-size:13px; color:#374151;"><?= htmlspecialchars($row['fornecedor']) ?></div>
               <div class="muted" style="font-size:11px;">CNPJ: <?= \MateriaisOpme\App\Support\Cnpj::format($row['cnpj_fornecedor']) ?></div>
             </td>
             <td style="text-align:center;">
-              <?php if ($row['status_anterior'] === 'critico'): ?>
+              <?php if ($row['status_anterior'] === null || $row['status_anterior'] === ''): ?>
+                <span style="color:#9ca3af;font-size:12px;">—</span>
+              <?php elseif ($row['status_anterior'] === 'critico'): ?>
                 <span class="status-tag" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🔴 CRÍTICO</span>
               <?php elseif ($row['status_anterior'] === 'alerta'): ?>
                 <span class="status-tag" style="background:#fef3c7;color:#f59e0b;border:1px solid #fcd34d;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟠 ALERTA</span>
@@ -148,8 +171,8 @@ ob_start();
                 <span class="status-tag" style="background:#ecfdf5;color:#10b981;border:1px solid #a7f3d0;padding:2px 6px;font-size:11px;font-weight:700;border-radius:4px;">🟢 NORMAL</span>
               <?php endif; ?>
             </td>
-            <td style="text-align:center;font-weight:700;"><?= number_format((int)$row['saldo_momento'], 0, ',', '.') ?></td>
-            <td style="text-align:center;"><?= number_format((int)$row['media_momento'], 0, ',', '.') ?></td>
+            <td style="text-align:center;font-weight:700;"><?= number_format((float)$row['saldo_momento'], 1, ',', '.') ?></td>
+            <td style="text-align:center;"><?= number_format((float)$row['media_momento'], 1, ',', '.') ?></td>
             <td style="text-align:center;white-space:nowrap;"><?= htmlspecialchars($row['data_formatada']) ?></td>
           </tr>
         <?php endforeach; ?>
