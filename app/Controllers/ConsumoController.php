@@ -45,17 +45,20 @@ final class ConsumoController
                 s.cd_fornec_consignado AS cnpj_fornecedor,
                 COALESCE(f.name, 'Não identificado') AS ds_fornecedor,
                 s.saldo,
-                COALESCE(c.descricao, 'Material Desconhecido') AS descricao,
-                ROUND(SUM(c.consumo) / COUNT(DISTINCT c.mes), 1) AS media_trimestre
+                COALESCE(cad.descricao, 'Material Desconhecido') AS descricao,
+                COALESCE(ROUND(SUM(c.consumo) / NULLIF(COUNT(DISTINCT c.mes), 0), 1), 0) AS media_trimestre
             FROM saldo_estoque_atual s
+            LEFT JOIN consumo_materiais_cadastro cad ON s.cd_material = cad.cd_material
             LEFT JOIN consumo_materiais c ON s.cd_material = c.codigo
+                AND c.ano = YEAR(CURDATE()) 
+                AND c.mes >= MONTH(CURDATE()) - 3
             LEFT JOIN consumo_fornecedores f ON f.cnpj = s.cd_fornec_consignado
             LEFT JOIN consumo_fornecedor_especialidade cfe ON cfe.cnpj_fornecedor = s.cd_fornec_consignado AND cfe.id_especialidade = 1
-            WHERE c.ano = YEAR(CURDATE()) 
-              AND c.mes >= MONTH(CURDATE()) - 3
-              AND cfe.id_especialidade IS NULL
-            GROUP BY s.cd_material, s.cd_fornec_consignado, c.descricao, f.name, s.saldo
-            HAVING media_trimestre > 1
+            LEFT JOIN consumo_relacoes_inativas cri ON cri.cd_material = s.cd_material AND cri.cnpj_fornecedor = s.cd_fornec_consignado
+            WHERE cfe.id_especialidade IS NULL
+              AND cri.cd_material IS NULL
+            GROUP BY s.cd_material, s.cd_fornec_consignado, cad.descricao, f.name, s.saldo
+            HAVING media_trimestre >= 1
         ";
 
         $stmt = $pdo->query($sql);
@@ -84,18 +87,39 @@ final class ConsumoController
             $desc = (string)$row['descricao'];
             $forn = (string)$row['ds_fornecedor'];
 
-            $threshold_critico = (float)ceil($media * 0.95);
-            $threshold_warning = (float)ceil($media * 1.05);
+            // Thresholds por faixa de média
+            if ($media <= 3) {
+                // Grupo A — consumo esporádico/baixo: binário (normal ou crítico)
+                // Saldo >= média = NORMAL | Saldo > 0 e < média = ALERTA | Saldo = 0 = CRÍTICO
+                $threshold_critico = 0;
+                $threshold_warning = (float)ceil($media);
+            } else {
+                // Grupo B — consumo regular/alto: margem de 10% para warning
+                $threshold_critico = (float)ceil($media * 0.9);
+                $threshold_warning = (float)ceil($media);
+            }
 
             $status = 'normal';
             $status_desc = 'Saudável';
 
-            if ($saldo <= $threshold_critico) {
-                $status = 'critico';
-                $status_desc = 'Crítico';
-            } elseif ($saldo <= $threshold_warning) {
-                $status = 'alerta';
-                $status_desc = 'Alerta';
+            if ($media <= 3) {
+                // Grupo A: lógica especial
+                if ($saldo <= 0) {
+                    $status = 'critico';
+                    $status_desc = 'Crítico';
+                } elseif ($saldo < $threshold_warning) {
+                    $status = 'alerta';
+                    $status_desc = 'Alerta';
+                }
+            } else {
+                // Grupo B: lógica padrão
+                if ($saldo <= $threshold_critico) {
+                    $status = 'critico';
+                    $status_desc = 'Crítico';
+                } elseif ($saldo <= $threshold_warning) {
+                    $status = 'alerta';
+                    $status_desc = 'Alerta';
+                }
             }
 
             // Ratio de criticidade para ordenação (menor ratio = mais crítico)
@@ -297,10 +321,8 @@ final class ConsumoController
                 h.data_transicao
             FROM consumo_status_historico h
             LEFT JOIN (
-                SELECT codigo, descricao 
-                FROM consumo_materiais c1 
-                WHERE data_importacao = (SELECT MAX(data_importacao) FROM consumo_materiais c2 WHERE c2.codigo = c1.codigo)
-                GROUP BY codigo
+                SELECT cd_material AS codigo, descricao 
+                FROM consumo_materiais_cadastro
             ) c_desc ON h.cd_material = c_desc.codigo
             LEFT JOIN consumo_fornecedores f ON f.cnpj = h.cnpj_fornecedor
             LEFT JOIN consumo_fornecedor_especialidade cfe ON cfe.cnpj_fornecedor = h.cnpj_fornecedor AND cfe.id_especialidade = 1
@@ -447,10 +469,8 @@ final class ConsumoController
                 DATE_FORMAT(h.data_transicao, '%d/%m/%Y %H:%i') AS data_transicao
             FROM consumo_status_historico h
             LEFT JOIN (
-                SELECT codigo, descricao 
-                FROM consumo_materiais c1 
-                WHERE data_importacao = (SELECT MAX(data_importacao) FROM consumo_materiais c2 WHERE c2.codigo = c1.codigo)
-                GROUP BY codigo
+                SELECT cd_material AS codigo, descricao 
+                FROM consumo_materiais_cadastro
             ) c_desc ON h.cd_material = c_desc.codigo
             LEFT JOIN consumo_fornecedores f ON f.cnpj = h.cnpj_fornecedor
             WHERE 1=1
@@ -631,10 +651,8 @@ final class ConsumoController
                 sn.media_trimestre
             FROM consumo_snapshot_diario sn
             LEFT JOIN (
-                SELECT codigo, descricao 
-                FROM consumo_materiais c1 
-                WHERE data_importacao = (SELECT MAX(data_importacao) FROM consumo_materiais c2 WHERE c2.codigo = c1.codigo)
-                GROUP BY codigo
+                SELECT cd_material AS codigo, descricao 
+                FROM consumo_materiais_cadastro
             ) c_desc ON sn.cd_material = c_desc.codigo
             LEFT JOIN consumo_fornecedores f ON f.cnpj = sn.cnpj_fornecedor
             WHERE 1=1
@@ -753,10 +771,8 @@ final class ConsumoController
                 sn.media_trimestre
             FROM consumo_snapshot_diario sn
             LEFT JOIN (
-                SELECT codigo, descricao 
-                FROM consumo_materiais c1 
-                WHERE data_importacao = (SELECT MAX(data_importacao) FROM consumo_materiais c2 WHERE c2.codigo = c1.codigo)
-                GROUP BY codigo
+                SELECT cd_material AS codigo, descricao 
+                FROM consumo_materiais_cadastro
             ) c_desc ON sn.cd_material = c_desc.codigo
             LEFT JOIN consumo_fornecedores f ON f.cnpj = sn.cnpj_fornecedor
             WHERE 1=1
