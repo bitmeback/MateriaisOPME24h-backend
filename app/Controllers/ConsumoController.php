@@ -593,4 +593,244 @@ final class ConsumoController
         }
         exit;
     }
+
+    /**
+     * Timeline — Visão diária do estado de todos os materiais via consumo_snapshot_diario.
+     */
+    public function timeline(): void
+    {
+        $this->auth->requireLogin();
+
+        $data_inicio = trim((string)($_GET['data_inicio'] ?? ''));
+        $data_fim = trim((string)($_GET['data_fim'] ?? ''));
+        $status_filtro = trim((string)($_GET['status'] ?? ''));
+        $q = trim((string)($_GET['q'] ?? ''));
+        $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos'));
+
+        $pdo = Database::pdo();
+
+        // Blacklist de vínculos inativos
+        $stmtInativas = $pdo->query('SELECT cd_material, cnpj_fornecedor FROM consumo_relacoes_inativas');
+        $blacklist = [];
+        while ($row = $stmtInativas->fetch()) {
+            $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+            $blacklist[$key] = true;
+        }
+
+        // Query principal — dados do snapshot com descrição do material
+        $params = [];
+        $sql = "
+            SELECT 
+                sn.data_snapshot,
+                sn.cd_material,
+                sn.cnpj_fornecedor,
+                COALESCE(c_desc.descricao, 'Material Desconhecido') AS descricao,
+                COALESCE(f.name, 'Não identificado') AS fornecedor,
+                sn.status,
+                sn.saldo,
+                sn.media_trimestre
+            FROM consumo_snapshot_diario sn
+            LEFT JOIN (
+                SELECT codigo, descricao 
+                FROM consumo_materiais c1 
+                WHERE data_importacao = (SELECT MAX(data_importacao) FROM consumo_materiais c2 WHERE c2.codigo = c1.codigo)
+                GROUP BY codigo
+            ) c_desc ON sn.cd_material = c_desc.codigo
+            LEFT JOIN consumo_fornecedores f ON f.cnpj = sn.cnpj_fornecedor
+            WHERE 1=1
+        ";
+
+        if ($data_inicio !== '') {
+            $sql .= " AND sn.data_snapshot >= ?";
+            $params[] = $data_inicio;
+        }
+        if ($data_fim !== '') {
+            $sql .= " AND sn.data_snapshot <= ?";
+            $params[] = $data_fim;
+        }
+        if ($status_filtro !== '') {
+            $sql .= " AND sn.status = ?";
+            $params[] = $status_filtro;
+        }
+
+        $sql .= " ORDER BY sn.data_snapshot DESC, sn.cd_material ASC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $snapshots = $stmt->fetchAll();
+
+        // Filtro textual (código, descrição, fornecedor)
+        if ($q !== '') {
+            $qLower = mb_strtolower($q);
+            $snapshots = array_filter($snapshots, function ($row) use ($qLower) {
+                return stripos((string)$row['cd_material'], $qLower) !== false
+                    || stripos($row['descricao'], $qLower) !== false
+                    || stripos($row['fornecedor'], $qLower) !== false;
+            });
+            $snapshots = array_values($snapshots);
+        }
+
+        // Filtro de vínculos (ativos/inativos/todos)
+        if ($filtro_vinculo !== 'todos') {
+            $snapshots = array_filter($snapshots, function ($row) use ($blacklist, $filtro_vinculo) {
+                $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+                $ativo = !isset($blacklist[$key]);
+                if ($filtro_vinculo === 'ativos') return $ativo;
+                if ($filtro_vinculo === 'inativos') return !$ativo;
+                return true;
+            });
+            $snapshots = array_values($snapshots);
+        }
+
+        // Estatísticas por dia
+        $stats_por_dia = [];
+        foreach ($snapshots as $row) {
+            $dia = $row['data_snapshot'];
+            if (!isset($stats_por_dia[$dia])) {
+                $stats_por_dia[$dia] = ['total' => 0, 'critico' => 0, 'alerta' => 0, 'normal' => 0];
+            }
+            $stats_por_dia[$dia]['total']++;
+            $stats_por_dia[$dia][$row['status']]++;
+        }
+        krsort($stats_por_dia);
+
+        // Dias disponíveis para o filtro de período
+        $stmtDias = $pdo->query('SELECT DISTINCT data_snapshot FROM consumo_snapshot_diario ORDER BY data_snapshot DESC');
+        $dias_disponiveis = $stmtDias->fetchAll();
+
+        // Lista de fornecedores para filtro
+        $stmtForn = $pdo->query('SELECT id, name FROM consumo_fornecedores ORDER BY name');
+        $fornecedores = $stmtForn->fetchAll();
+
+        View::render('consumo_timeline', [
+            'snapshots' => $snapshots,
+            'stats_por_dia' => $stats_por_dia,
+            'dias_disponiveis' => $dias_disponiveis,
+            'data_inicio' => $data_inicio,
+            'data_fim' => $data_fim,
+            'status_filtro' => $status_filtro,
+            'busca' => $q,
+            'filtro_vinculo' => $filtro_vinculo,
+            'fornecedores' => $fornecedores,
+            'csrf_token' => Csrf::token(),
+            'role' => $_SESSION['role'] ?? 'guest'
+        ]);
+    }
+
+    /**
+     * Exportar timeline como CSV (Excel BR).
+     */
+    public function exportTimelineCsv(): void
+    {
+        $this->auth->requireLogin();
+
+        $data_inicio = trim((string)($_GET['data_inicio'] ?? ''));
+        $data_fim = trim((string)($_GET['data_fim'] ?? ''));
+        $status_filtro = trim((string)($_GET['status'] ?? ''));
+        $q = trim((string)($_GET['q'] ?? ''));
+        $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos'));
+
+        $pdo = Database::pdo();
+
+        // Blacklist
+        $stmtInativas = $pdo->query('SELECT cd_material, cnpj_fornecedor FROM consumo_relacoes_inativas');
+        $blacklist = [];
+        while ($row = $stmtInativas->fetch()) {
+            $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+            $blacklist[$key] = true;
+        }
+
+        $params = [];
+        $sql = "
+            SELECT 
+                sn.data_snapshot,
+                sn.cd_material,
+                COALESCE(c_desc.descricao, 'Material Desconhecido') AS descricao,
+                sn.cnpj_fornecedor,
+                COALESCE(f.name, 'Não identificado') AS fornecedor,
+                sn.status,
+                sn.saldo,
+                sn.media_trimestre
+            FROM consumo_snapshot_diario sn
+            LEFT JOIN (
+                SELECT codigo, descricao 
+                FROM consumo_materiais c1 
+                WHERE data_importacao = (SELECT MAX(data_importacao) FROM consumo_materiais c2 WHERE c2.codigo = c1.codigo)
+                GROUP BY codigo
+            ) c_desc ON sn.cd_material = c_desc.codigo
+            LEFT JOIN consumo_fornecedores f ON f.cnpj = sn.cnpj_fornecedor
+            WHERE 1=1
+        ";
+
+        if ($data_inicio !== '') {
+            $sql .= " AND sn.data_snapshot >= ?";
+            $params[] = $data_inicio;
+        }
+        if ($data_fim !== '') {
+            $sql .= " AND sn.data_snapshot <= ?";
+            $params[] = $data_fim;
+        }
+        if ($status_filtro !== '') {
+            $sql .= " AND sn.status = ?";
+            $params[] = $status_filtro;
+        }
+
+        $sql .= " ORDER BY sn.data_snapshot DESC, sn.cd_material ASC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="timeline_consumo_opme_' . date('Y-m-d_His') . '.csv"');
+        header('Cache-Control: no-cache');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM UTF-8
+
+        fputcsv($output, [
+            'Data_Snapshot',
+            'Codigo_Material',
+            'Descricao',
+            'CNPJ_Fornecedor',
+            'Fornecedor',
+            'Status',
+            'Saldo',
+            'Media_Trimestre'
+        ], ';');
+
+        while ($row = $stmt->fetch()) {
+            // Filtro textual
+            if ($q !== '') {
+                $qLower = mb_strtolower($q);
+                if (stripos((string)$row['cd_material'], $qLower) === false
+                    && stripos($row['descricao'], $qLower) === false
+                    && stripos($row['fornecedor'], $qLower) === false) {
+                    continue;
+                }
+            }
+            // Filtro de vínculos
+            if ($filtro_vinculo !== 'todos') {
+                $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+                $ativo = !isset($blacklist[$key]);
+                if ($filtro_vinculo === 'ativos' && !$ativo) continue;
+                if ($filtro_vinculo === 'inativos' && $ativo) continue;
+            }
+
+            fputcsv($output, [
+                $row['data_snapshot'],
+                $row['cd_material'],
+                $row['descricao'],
+                $row['cnpj_fornecedor'],
+                $row['fornecedor'],
+                $row['status'],
+                number_format((float)$row['saldo'], 1, ',', '.'),
+                number_format((float)$row['media_trimestre'], 1, ',', '.')
+            ], ';');
+        }
+
+        fclose($output);
+        exit;
+    }
 }

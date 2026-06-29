@@ -24,6 +24,7 @@ ob_start();
 <div class="nav nav-top">
   <a class="btn" href="/especialidades">Especialidades</a>
   <a class="btn" href="/consumo" style="background:#3b82f6; color:#fff;">Consumo</a>
+  <a class="btn" href="/consumo/timeline">Timeline</a>
   <a class="btn btn-secondary" href="/dashboard">Voltar ao painel</a>
 </div>
 
