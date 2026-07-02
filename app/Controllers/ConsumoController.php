@@ -689,7 +689,7 @@ final class ConsumoController
         ";
 
         $stmt = $pdo->query($sql);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         $output = fopen('php://output', 'w');
         fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
