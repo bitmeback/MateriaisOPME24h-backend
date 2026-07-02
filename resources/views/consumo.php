@@ -432,28 +432,21 @@ function toggleVinculo(cdMaterial, cnpjFornecedor, checkboxElement) {
             ativo: isAtivo
         })
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Falha de resposta no servidor');
+    .then(response => response.json().then(data => ({ ok: response.ok, data })))
+    .then(({ ok, data }) => {
+        if (!ok) {
+            throw new Error(data.error || 'Falha de resposta no servidor');
         }
-        return response.json();
-    })
-    .then(data => {
         if (data.success) {
-            // Se o filtro selecionado for o padrão "Apenas Vínculos Ativos" e o usuário desativou,
-            // podemos opcionalmente remover a linha da visão ou mantê-la esmaecida.
-            // Para manter a UX sólida, deixamos o usuário ver que desativou e ela some no próximo refresh,
-            // a não ser que ele clique no botão Limpar ou mude o filtro superior.
             console.log(`Vínculo do material ${cdMaterial} com fornecedor ${cnpjFornecedor} ${data.action} com sucesso!`);
         } else {
-            reverterCheckbox(checkboxElement, row, !isAtivo);
-            alert('Erro ao alterar vínculo: ' + (data.error || 'Erro desconhecido.'));
+            throw new Error(data.error || 'Erro desconhecido.');
         }
     })
     .catch(error => {
         console.error('Erro na requisição AJAX:', error);
         reverterCheckbox(checkboxElement, row, !isAtivo);
-        alert('Erro ao conectar ao servidor. O vínculo não foi salvo.');
+        alert('Erro: ' + (error.message || 'Erro ao conectar ao servidor. O vínculo não foi salvo.'));
     });
 }
 

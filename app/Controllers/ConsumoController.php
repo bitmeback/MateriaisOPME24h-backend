@@ -269,9 +269,21 @@ final class ConsumoController
         $cnpj_fornecedor = preg_replace('/[^0-9]/', '', (string)($input['cnpj_fornecedor'] ?? ''));
         $ativo = filter_var($input['ativo'] ?? true, FILTER_VALIDATE_BOOL);
 
-        if ($cd_material <= 0 || strlen($cnpj_fornecedor) !== 14) {
+        if ($cd_material <= 0) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Dados de material ou fornecedor inválidos']);
+            echo json_encode(['success' => false, 'error' => 'Código de material inválido']);
+            exit;
+        }
+
+        if (strlen($cnpj_fornecedor) === 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Fornecedor não informado']);
+            exit;
+        }
+
+        if (strlen($cnpj_fornecedor) !== 14) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'CNPJ do fornecedor inválido']);
             exit;
         }
 
@@ -633,9 +645,21 @@ final class ConsumoController
         $cd_material = (int)($_GET['cd_material'] ?? 0);
         $cnpj_fornecedor = preg_replace('/[^0-9]/', '', (string)($_GET['cnpj_fornecedor'] ?? ''));
 
-        if ($cd_material <= 0 || strlen($cnpj_fornecedor) !== 14) {
+        if ($cd_material <= 0) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Código de material ou CNPJ inválido']);
+            echo json_encode(['success' => false, 'error' => 'Código de material inválido']);
+            exit;
+        }
+
+        if (strlen($cnpj_fornecedor) === 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Fornecedor não informado']);
+            exit;
+        }
+
+        if (strlen($cnpj_fornecedor) !== 14) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'CNPJ do fornecedor inválido']);
             exit;
         }
 

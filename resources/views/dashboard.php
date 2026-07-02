@@ -1,13 +1,15 @@
 <?php
 declare(strict_types=1);
 ob_start();
-?>
-<h1>Dashboard</h1>
+?><h1>Dashboard</h1>
 <div class="nav nav-top">
   <a class="btn" href="/fornecedores">Fornecedores</a>
   <a class="btn" href="/enviados">Enviados</a>
   <?php if (in_array(($role ?? 'guest'), ['admin', 'desenv', 'user'], true)): ?>
     <a class="btn" href="/consumo">Consumo</a>
+  <?php endif; ?>
+  <?php if (in_array(($role ?? 'guest'), ['admin', 'desenv'], true)): ?>
+    <a class="btn" href="/resultado">Resultado</a>
   <?php endif; ?>
   <?php if (in_array(($role ?? 'guest'), ['admin', 'desenv'], true)): ?>
     <a class="btn" href="/usuarios">Usuários</a>

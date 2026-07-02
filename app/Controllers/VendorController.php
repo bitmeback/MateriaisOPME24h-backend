@@ -403,11 +403,19 @@ final class VendorController
             'cnpj_formatted' => Cnpj::format((string)($_POST['cnpj'] ?? '')),
             'send_report' => filter_var($_POST['send_report'] ?? '0', FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? false,
             'status' => trim((string)($_POST['status'] ?? '')),
-            'contacts' => trim((string)($_POST['contacts'] ?? '')),
+            'contacts' => self::normalizeContactsString((string)($_POST['contacts'] ?? '')),
             'name' => trim((string)($_POST['name'] ?? '')),
             'notes' => trim((string)($_POST['notes'] ?? '')),
             'pendencias' => max(0, (int)($_POST['pendencias'] ?? 0)),
         ];
+    }
+
+    private static function normalizeContactsString(string $contacts): string
+    {
+        $parts = array_map('trim', explode(',', $contacts));
+        $parts = array_values(array_filter($parts, static fn(string $part): bool => $part !== ''));
+
+        return implode(', ', $parts);
     }
 
     private function renderForm(array $vendor, string $action, ?string $error = null, ?string $warning = null): void

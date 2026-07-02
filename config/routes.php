@@ -46,4 +46,6 @@ return [
     ['GET', '/api/consumo/historico', 'ConsumoController@getHistoricoStatus', true],
     ['GET', '/consumo/timeline', 'ConsumoController@timeline', true],
     ['GET', '/api/consumo/timeline-csv', 'ConsumoController@exportTimelineCsv', true],
+    ['GET', '/resultado', 'RelatorioController@index', true],
+    ['GET', '/api/resultado/export-csv', 'RelatorioController@exportCsv', true],
 ];
