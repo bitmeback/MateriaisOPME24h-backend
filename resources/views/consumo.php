@@ -67,7 +67,11 @@ ob_start();
 <section class="panel list-panel">
   <div class="panel-head">
     <h2>Materiais em Giro de Estoque</h2>
-    <p class="muted">Filtrados de acordo com os critérios de consumo das especialidades de faturamento ativas.</p>
+    <div>
+      <a class="btn btn-pending" href="<?= htmlspecialchars('/api/consumo/export-csv-atual?' . http_build_query($_GET), ENT_QUOTES, 'UTF-8') ?>">
+        📥 Exportar CSV (Excel BR)
+      </a>
+    </div>
   </div>
 
   <!-- Barra de Busca e Filtro de Threshold -->
@@ -132,7 +136,6 @@ ob_start();
           <?php if ($busca !== '' || $filtro_status !== '' || $filtro_vinculo !== 'ativos' || $filtro_uso !== 'utilizados' || $sort !== 'status_ratio'): ?>
             <a class="btn btn-secondary" href="/consumo">Limpar</a>
           <?php endif; ?>
-          <a class="btn" style="margin:0;" href="<?= htmlspecialchars('/api/consumo/export-csv-atual?' . http_build_query(array_merge($_GET, ['page' => 1])), ENT_QUOTES, 'UTF-8') ?>">Exportar CSV</a>
         </div>
       </div>
     </div>
