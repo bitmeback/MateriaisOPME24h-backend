@@ -43,6 +43,7 @@ return [
     ['POST', '/consumo/toggle', 'ConsumoController@toggleVinculo', true],
     ['GET', '/consumo/relatorios', 'ConsumoController@relatorios', true],
     ['GET', '/api/consumo/export-csv', 'ConsumoController@exportCsv', true],
+    ['GET', '/api/consumo/export-csv-atual', 'ConsumoController@exportCsvConsumo', true],
     ['GET', '/api/consumo/historico', 'ConsumoController@getHistoricoStatus', true],
     ['GET', '/consumo/timeline', 'ConsumoController@timeline', true],
     ['GET', '/api/consumo/timeline-csv', 'ConsumoController@exportTimelineCsv', true],

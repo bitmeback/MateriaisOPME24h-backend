@@ -132,6 +132,7 @@ ob_start();
           <?php if ($busca !== '' || $filtro_status !== '' || $filtro_vinculo !== 'ativos' || $filtro_uso !== 'utilizados' || $sort !== 'status_ratio'): ?>
             <a class="btn btn-secondary" href="/consumo">Limpar</a>
           <?php endif; ?>
+          <a class="btn" style="margin:0;" href="<?= htmlspecialchars('/api/consumo/export-csv-atual?' . http_build_query(array_merge($_GET, ['page' => 1])), ENT_QUOTES, 'UTF-8') ?>">Exportar CSV</a>
         </div>
       </div>
     </div>

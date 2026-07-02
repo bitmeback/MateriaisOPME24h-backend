@@ -634,6 +634,104 @@ final class ConsumoController
     }
 
     /**
+     * Endpoint CSV do estado atual do /consumo, seguindo os mesmos filtros da tela.
+     */
+    public function exportCsvConsumo(): void
+    {
+        $this->auth->requireLogin();
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="consumo_atual_' . date('Y-m-d_His') . '.csv"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $q = trim((string)($_GET['q'] ?? ''));
+        $status_filtro = trim((string)($_GET['status'] ?? ''));
+        $filtro_vinculo = trim((string)($_GET['vinculo'] ?? 'ativos'));
+        $filtro_uso = trim((string)($_GET['uso'] ?? 'utilizados'));
+        $sort = trim((string)($_GET['sort'] ?? 'status_ratio'));
+
+        $pdo = Database::pdo();
+
+        $stmtInativas = $pdo->query('SELECT cd_material, cnpj_fornecedor FROM consumo_relacoes_inativas');
+        $blacklist = [];
+        while ($row = $stmtInativas->fetch()) {
+            $key = $row['cd_material'] . '_' . $row['cnpj_fornecedor'];
+            $blacklist[$key] = true;
+        }
+
+        $havingClause = match ($filtro_uso) {
+            'nao_utilizados' => 'HAVING media_trimestre < 1 OR media_trimestre IS NULL',
+            'todos' => '',
+            default => 'HAVING media_trimestre >= 1',
+        };
+
+        $sql = "
+            SELECT 
+                s.cd_material,
+                s.cd_fornec_consignado AS cnpj_fornecedor,
+                COALESCE(f.name, 'Não identificado') AS ds_fornecedor,
+                COALESCE(cad.descricao, 'Material Desconhecido') AS descricao,
+                COALESCE(ROUND(SUM(c.consumo) / NULLIF(COUNT(DISTINCT c.mes), 0)), 0) AS media_trimestre,
+                MAX(s.saldo) as saldo
+            FROM saldo_estoque_atual s
+            LEFT JOIN consumo_materiais_cadastro cad ON s.cd_material = cad.cd_material
+            LEFT JOIN consumo_materiais c ON s.cd_material = c.codigo
+                AND c.ano = YEAR(CURDATE())
+                AND c.mes >= MONTH(CURDATE()) - 3
+            LEFT JOIN consumo_fornecedores f ON f.cnpj = s.cd_fornec_consignado
+            LEFT JOIN consumo_fornecedor_especialidade cfe ON cfe.cnpj_fornecedor = s.cd_fornec_consignado AND cfe.id_especialidade = 1
+            LEFT JOIN consumo_relacoes_inativas cri ON cri.cd_material = s.cd_material AND cri.cnpj_fornecedor = s.cd_fornec_consignado
+            WHERE cfe.id_especialidade IS NULL
+              AND cri.cd_material IS NULL
+            GROUP BY s.cd_material, s.cd_fornec_consignado, cad.descricao, f.name, s.saldo
+            {$havingClause}
+        ";
+
+        $stmt = $pdo->query($sql);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+        fputcsv($output, ['Codigo', 'Material', 'Fornecedor', 'CNPJ_Fornecedor', 'Media_90d', 'Saldo', 'Status', 'Vinculo'], ';');
+
+        foreach ($rows as $row) {
+            $codigo = (int)$row['cd_material'];
+            $cnpj = (string)$row['cnpj_fornecedor'];
+            $key = $codigo . '_' . $cnpj;
+            $vinculo_ativo = !isset($blacklist[$key]);
+
+            if ($filtro_vinculo === 'ativos' && !$vinculo_ativo) continue;
+            if ($filtro_vinculo === 'inativos' && $vinculo_ativo) continue;
+
+            $saldo = (float)$row['saldo'];
+            $media = (float)$row['media_trimestre'];
+
+            if ($media < 1 && $saldo > 0) $status = 'Sem Giro';
+            elseif ($media < 1 && $saldo <= 0) $status = 'Inativo';
+            elseif ($media <= 3) $status = $saldo < $media ? 'Critico' : 'Saudavel';
+            else $status = $saldo < (round($media * 0.9)) ? 'Critico' : ($saldo < $media ? 'Alerta' : 'Saudavel');
+
+            if ($q !== '' && stripos((string)$codigo, $q) === false && stripos((string)$row['descricao'], $q) === false && stripos((string)$row['ds_fornecedor'], $q) === false) continue;
+            if ($status_filtro !== '' && strtolower($status) !== strtolower($status_filtro)) continue;
+
+            fputcsv($output, [
+                $codigo,
+                (string)$row['descricao'],
+                (string)$row['ds_fornecedor'],
+                $cnpj,
+                $media,
+                $saldo,
+                $status,
+                $vinculo_ativo ? 'Ativo' : 'Inativo',
+            ], ';');
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
      * Endpoint API AJAX que retorna a JSON list of transition history for a given cd_material and cnpj_fornecedor.
      */
     public function getHistoricoStatus(): void
